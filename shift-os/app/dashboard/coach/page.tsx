@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCoachDashboardData } from '@/lib/dashboard/getCoachDashboardData';
 
@@ -105,6 +106,11 @@ export default async function CoachDashboardPage() {
         <section className="mt-12">
           <h2 className="text-2xl font-bold text-white">Coach Tools</h2>
           <p className="mt-1 text-sm text-white/30">Core tools are ready on this page; deeper workflows will unlock as each module is built.</p>
+          <div className="mt-5">
+            <Link href="/dashboard/coach/players/new" className="inline-flex rounded-full px-5 py-3 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]" style={{ backgroundColor: primaryColour, color: '#ffffff' }}>
+              Add Player
+            </Link>
+          </div>
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
             {coachTools.map((tool) => (
               <article key={tool.name} className="rounded-2xl border p-6 transition-all duration-300 ease-out hover:-translate-y-0.5" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)', borderBottom: `2px solid ${primaryColour}66` }}>
@@ -121,10 +127,38 @@ export default async function CoachDashboardPage() {
 
         <section className="mt-12 grid grid-cols-1 gap-4 xl:grid-cols-2">
           <article className="rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-            <h2 className="text-2xl font-bold text-white">Squad List</h2>
-            <p className="mt-1 text-sm text-white/30">Player profiles will populate here as the squad module comes online.</p>
-            <div className="mt-6 rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-5 text-sm text-white/35">
-              {focusTeam ? `${focusTeam.name} currently has ${focusTeam.player_count} linked players.` : 'No squad selected yet.'}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Squad List</h2>
+                <p className="mt-1 text-sm text-white/30">Players linked to your assigned team environment.</p>
+              </div>
+              <Link href="/dashboard/coach/players/new" className="rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out hover:bg-white/[0.06]" style={{ borderColor: `${primaryColour}66`, color: primaryColour }}>
+                Add Player
+              </Link>
+            </div>
+            <div className="mt-6 space-y-3">
+              {coachData.players.length === 0 ? (
+                <p className="rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-5 text-sm text-white/35">
+                  {focusTeam ? `${focusTeam.name} is ready for its first player.` : 'No squad selected yet.'}
+                </p>
+              ) : (
+                coachData.players.slice(0, 8).map((player) => {
+                  const playerTeam = coachData.teams.find((team) => team.id === player.team_id);
+                  return (
+                    <div key={player.id} className="rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-white">{player.full_name}</p>
+                          <p className="mt-1 text-sm text-white/30">{playerTeam?.name ?? 'Team not set'} / {player.age_group ?? 'Age group not set'}</p>
+                        </div>
+                        <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${primaryColour}1f`, borderColor: `${primaryColour}40`, color: primaryColour }}>
+                          Player
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </article>
 
