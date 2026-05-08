@@ -14,6 +14,9 @@ export interface TeamRecord {
   id: string;
   name: string;
   age_group: string | null;
+  gender: string | null;
+  league: string | null;
+  season: string | null;
   coach_name: string | null;
   player_count: number;
 }
@@ -29,6 +32,7 @@ export interface FixtureRecord {
 export interface ClubDashboardData {
   userId: string;
   firstName: string;
+  clubRole: string;
   club: ClubRecord;
   teams: TeamRecord[];
   fixtures: FixtureRecord[];
@@ -45,7 +49,7 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
 
   const { data: membership } = await supabase
     .from('club_members')
-    .select('club_id, clubs(id,name,ethos,badge_url,primary_colour,secondary_colour,plan_tier)')
+    .select('club_id, club_role, clubs(id,name,ethos,badge_url,primary_colour,secondary_colour,plan_tier)')
     .eq('user_id', session.user.id)
     .eq('is_active', true)
     .maybeSingle();
@@ -54,11 +58,12 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
   const club = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;
   if (!club) return null;
 
-  const [teamsRes, fixturesRes, playersCountRes, coachesCountRes] = await Promise.all([
+  const [teamsRes, fixturesRes, playersCountRes, coachesCountRes, profileRes] = await Promise.all([
     supabase
       .from('teams')
-      .select('id,name,age_group,coach_name,player_count')
+      .select('id,name,age_group,gender,league,season')
       .eq('club_id', club.id)
+      .eq('is_active', true)
       .order('name', { ascending: true }),
     supabase
       .from('fixtures')
@@ -66,16 +71,31 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
       .eq('club_id', club.id)
       .order('fixture_date', { ascending: true }),
     supabase.from('players').select('*', { count: 'exact', head: true }).eq('club_id', club.id),
-    supabase.from('coaches').select('*', { count: 'exact', head: true }).eq('club_id', club.id)
+    supabase.from('coaches').select('*', { count: 'exact', head: true }).eq('club_id', club.id),
+    supabase.from('users_profile').select('full_name').eq('id', session.user.id).maybeSingle()
   ]);
 
-  const fullName = typeof session.user.user_metadata.full_name === 'string' ? session.user.user_metadata.full_name.trim() : '';
+  const rawProfile = profileRes.data as { full_name: string | null } | null;
+  const fullName = rawProfile?.full_name?.trim() ?? '';
+  const rawTeams = (teamsRes.data ?? []) as Array<{
+    id: string;
+    name: string;
+    age_group: string | null;
+    gender: string | null;
+    league: string | null;
+    season: string | null;
+  }>;
 
   return {
     userId: session.user.id,
-    firstName: fullName.length > 0 ? fullName.split(' ')[0] : 'Coach',
+    firstName: fullName.length > 0 ? fullName.split(' ')[0] : 'there',
+    clubRole: typeof membership?.club_role === 'string' ? membership.club_role : '',
     club,
-    teams: teamsRes.data ?? [],
+    teams: rawTeams.map((team) => ({
+      ...team,
+      coach_name: null,
+      player_count: 0
+    })),
     fixtures: fixturesRes.data ?? [],
     totalPlayers: playersCountRes.count ?? 0,
     totalCoaches: coachesCountRes.count ?? 0
