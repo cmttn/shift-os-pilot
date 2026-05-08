@@ -52,7 +52,7 @@ export default function ClubHeader({ clubData }: ClubHeaderProps) {
             <img
               src={club.badge_url}
               alt={`${club.name} badge`}
-              className="h-20 w-20 rounded-full object-cover md:h-[110px] md:w-[110px]"
+              className="h-20 w-20 overflow-hidden rounded-full object-cover md:h-[110px] md:w-[110px]"
               style={{ filter: `drop-shadow(0 12px 32px rgba(0,0,0,0.8)) drop-shadow(0 0 20px ${club.primary_colour}66)` }}
             />
           ) : (
