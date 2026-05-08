@@ -12,9 +12,9 @@ export default async function ClubDashboardLayout({ children }: { children: Reac
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
       <Sidebar club={clubData.club} />
-      <main className="md:ml-[240px]">
+      <main className="md:ml-[260px]">
         <ClubHeader clubData={clubData} />
         <div className="px-4 py-4 md:px-8 md:py-8">{children}</div>
       </main>
