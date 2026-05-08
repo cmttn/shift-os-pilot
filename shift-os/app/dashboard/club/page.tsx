@@ -19,7 +19,7 @@ export default async function ClubDashboardHomePage() {
         <p className="mt-2 text-gray-400">Here&apos;s what&apos;s happening at {clubData.club.name} today.</p>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[['Total Teams', clubData.teams.length], ['Total Players', clubData.totalPlayers], ['Total Coaches', clubData.totalCoaches], ['Upcoming Fixtures', upcomingFixtures.length]].map(([label, value]) => (
           <article key={label} className="rounded-xl border border-gray-800 bg-gray-900 p-6">
             <p className="text-sm text-gray-400">{label}</p>
@@ -34,7 +34,7 @@ export default async function ClubDashboardHomePage() {
           <button className="rounded-lg border border-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-900">Add Team +</button>
         </div>
         {clubData.teams.length === 0 ? <p className="rounded-xl border border-gray-800 bg-gray-900 p-6 text-gray-300">No teams yet. Add your first team →</p> : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {clubData.teams.map((team) => (
               <article key={team.id} className="rounded-xl border border-gray-800 bg-gray-900 p-5 transition hover:border-[var(--club-primary)]" style={{ ['--club-primary' as string]: clubData.club.primary_colour }}>
                 <h4 className="text-lg font-semibold text-white">{team.name}</h4>
@@ -70,7 +70,7 @@ export default async function ClubDashboardHomePage() {
       <section>
         <h3 className="text-2xl font-bold text-white">Build Your Coaching Kit</h3>
         <p className="mt-1 text-gray-400">Everything your club needs, in one place.</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {[
             ['🕐', 'Game Time Tracker', 'Free', 'Active'],
             ['✅', 'Availability Manager', 'Free', 'Active'],
