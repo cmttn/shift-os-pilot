@@ -16,7 +16,7 @@ export default async function ClubDashboardLayout({ children }: { children: Reac
       <Sidebar club={clubData.club} />
       <main className="md:ml-[240px]">
         <ClubHeader clubData={clubData} />
-        <div className="p-4 md:p-8">{children}</div>
+        <div className="px-4 py-4 md:px-8 md:py-8">{children}</div>
       </main>
     </div>
   );
