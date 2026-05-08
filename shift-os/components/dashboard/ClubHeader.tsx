@@ -22,7 +22,12 @@ interface ClubHeaderProps {
 
 export default function ClubHeader({ clubData }: ClubHeaderProps) {
   const { club, teams, totalPlayers, totalCoaches } = clubData;
-  const initials = club.name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase();
+  const initials = club.name
+    .split(' ')
+    .map((word) => word[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
   const darkColour = darkenHex(club.primary_colour, 0.4);
 
   return (
@@ -32,20 +37,28 @@ export default function ClubHeader({ clubData }: ClubHeaderProps) {
     >
       <div
         className="absolute inset-0"
-        style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+        style={{
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
+          backgroundSize: '20px 20px'
+        }}
       />
-      <div className="relative flex flex-col items-center justify-between gap-5 px-4 md:flex-row md:items-center md:px-8">
-        <div className="flex flex-col items-center gap-4 text-center md:flex-row md:text-left">
-          <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full border-[3px] border-white bg-gray-900 text-3xl font-bold text-white shadow-[0_0_24px_rgba(255,255,255,0.45)] md:h-[100px] md:w-[100px] md:text-4xl">
-            {club.badge_url ? (
-              <img src={club.badge_url} alt={`${club.name} badge`} className="h-full w-full object-cover" />
-            ) : (
-              initials
-            )}
-          </div>
+      <div className="relative flex flex-col items-center justify-between gap-5 px-4 text-center md:flex-row md:text-left md:px-8">
+        <div className="flex flex-col items-center gap-4 md:flex-row">
+          {club.badge_url ? (
+            <img
+              src={club.badge_url}
+              alt={`${club.name} badge`}
+              className="h-[72px] w-[72px] rounded-full border-[3px] border-white bg-gray-900 object-cover shadow-[0_0_24px_rgba(255,255,255,0.45)] md:h-[100px] md:w-[100px]"
+            />
+          ) : (
+            <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-white/20 text-3xl font-bold text-white md:h-[100px] md:w-[100px] md:text-4xl">
+              {initials}
+            </div>
+          )}
+
           <div>
-            <h1 className="text-2xl font-bold text-white drop-shadow md:text-4xl">{club.name}</h1>
-            <p className="mx-auto mt-2 max-w-2xl text-sm italic text-white/80 md:mx-0 md:text-base">
+            <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow md:text-4xl">{club.name}</h1>
+            <p className="mx-auto mt-2 max-w-md text-sm italic text-white/80 md:mx-0 md:text-base">
               {club.ethos ?? 'Building players and people every day.'}
             </p>
           </div>
@@ -57,9 +70,13 @@ export default function ClubHeader({ clubData }: ClubHeaderProps) {
             ['Players', totalPlayers],
             ['Coaches', totalCoaches]
           ].map(([label, value]) => (
-            <div key={label} className="rounded-xl border border-white/30 bg-white/20 px-5 py-2 text-center" style={{ color: getContrastText(club.primary_colour) }}>
+            <div
+              key={label}
+              className="rounded-xl bg-white/20 px-5 py-2 text-center"
+              style={{ color: getContrastText(club.primary_colour) }}
+            >
               <p className="text-xl font-bold leading-tight">{value}</p>
-              <p className="text-xs font-semibold uppercase tracking-wide">{label}</p>
+              <p className="text-xs font-bold uppercase tracking-wide">{label}</p>
             </div>
           ))}
         </div>
