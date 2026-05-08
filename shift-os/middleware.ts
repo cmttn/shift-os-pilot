@@ -30,17 +30,34 @@ export async function middleware(request: NextRequest) {
     }
   });
 
-  const { data } = await supabase.auth.getSession();
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
 
   const pathname = request.nextUrl.pathname;
   if (pathname.startsWith('/auth')) {
     return response;
   }
 
-  if (pathname.startsWith('/dashboard') && !data.session) {
+  if (pathname.startsWith('/dashboard') && !session) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);
+  }
+
+  if (pathname.startsWith('/dashboard') && session) {
+    const { data: clubMember, error } = await supabase
+      .from('club_members')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('is_active', true)
+      .maybeSingle<{ id: string }>();
+
+    if (!error && !clubMember) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/onboarding';
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;
