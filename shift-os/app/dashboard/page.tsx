@@ -22,5 +22,18 @@ export default async function DashboardPage() {
     redirect('/dashboard/coach');
   }
 
+  const email = session.user.email?.toLowerCase();
+  const { count: linkedPlayerCount } = email
+    ? await supabase
+        .from('players')
+        .select('*', { count: 'exact', head: true })
+        .or(`guardian_1_email.ilike.${email},guardian_2_email.ilike.${email}`)
+        .eq('is_active', true)
+    : { count: 0 };
+
+  if (membership?.club_role === 'parent' || (linkedPlayerCount ?? 0) > 0) {
+    redirect('/dashboard/parent');
+  }
+
   redirect('/dashboard/club');
 }
