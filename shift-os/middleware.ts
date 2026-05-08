@@ -1,6 +1,10 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+type ClubMemberLookup = { id: string };
+
+const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup'];
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({
     request: {
@@ -35,25 +39,29 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getSession();
 
   const pathname = request.nextUrl.pathname;
-  if (pathname.startsWith('/auth')) {
-    return response;
-  }
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
-  if (pathname.startsWith('/dashboard') && !session) {
+  if (!session && !isPublicRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
+    url.pathname = '/';
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith('/dashboard') && session) {
-    const { data: clubMember, error } = await supabase
+  if (session && (pathname === '/auth/login' || pathname === '/auth/signup')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard/club';
+    return NextResponse.redirect(url);
+  }
+
+  if (session) {
+    const { data: membership } = await supabase
       .from('club_members')
       .select('id')
       .eq('user_id', session.user.id)
       .eq('is_active', true)
-      .maybeSingle<{ id: string }>();
+      .maybeSingle<ClubMemberLookup>();
 
-    if (!error && !clubMember) {
+    if (!membership && pathname !== '/onboarding') {
       const url = request.nextUrl.clone();
       url.pathname = '/onboarding';
       return NextResponse.redirect(url);
