@@ -15,6 +15,7 @@ function SignupForm() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const isDisabled = useMemo(() => loading, [loading]);
@@ -22,6 +23,7 @@ function SignupForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setNotice(null);
 
     if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
       setError('Please fill in all required fields.');
@@ -38,10 +40,13 @@ function SignupForm() {
 
     setLoading(true);
     const supabase = createClient();
+    const normalizedEmail = email.trim().toLowerCase();
+    const nextPath = intendedRole === 'club_admin' || !intendedRole ? '/onboarding' : '/dashboard';
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
+      email: normalizedEmail,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         data: {
           full_name: fullName.trim(),
           intended_role: intendedRole
@@ -59,12 +64,18 @@ function SignupForm() {
       setError(signUpError.message);
       return;
     }
+
     if (!data.user) {
       setError('Unable to create account right now. Please try again.');
       return;
     }
 
-    router.push('/onboarding');
+    if (!data.session) {
+      setNotice('Account created. Check your email to confirm your account, then you will be brought back into Shift OS.');
+      return;
+    }
+
+    router.push(nextPath);
     router.refresh();
   }
 
@@ -85,6 +96,7 @@ function SignupForm() {
             )}
           </p>
         )}
+        {notice && <p className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{notice}</p>}
         <button disabled={isDisabled} type="submit" className="flex w-full items-center justify-center rounded-lg bg-indigo-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-indigo-500/70">
           {loading ? <span className="inline-flex items-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Creating account...</span> : 'Create account'}
         </button>
