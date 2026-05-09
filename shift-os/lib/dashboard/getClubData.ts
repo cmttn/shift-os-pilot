@@ -19,7 +19,16 @@ export interface TeamRecord {
   season: string | null;
   join_code: string | null;
   coach_name: string | null;
+  coach_user_id: string | null;
+  pending_invite: PendingCoachInvite | null;
   player_count: number;
+}
+
+export interface PendingCoachInvite {
+  invite_token: string;
+  invitee_name: string | null;
+  invitee_email: string;
+  expires_at: string | null;
 }
 
 export interface FixtureRecord {
@@ -52,8 +61,10 @@ interface UserProfileRecord {
 
 interface PendingInviteRecord {
   team_id: string;
+  invite_token: string;
   invitee_name: string | null;
   invitee_email: string;
+  expires_at: string | null;
 }
 
 export interface ClubDashboardData {
@@ -110,7 +121,7 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
     teamIds.length > 0
       ? await Promise.all([
           supabase.from('team_coaches').select('team_id,user_id').in('team_id', teamIds).eq('is_lead', true),
-          supabase.from('pending_invites').select('team_id,invitee_name,invitee_email').in('team_id', teamIds).eq('role', 'coach').eq('is_lead', true).eq('status', 'pending')
+          supabase.from('pending_invites').select('team_id,invite_token,invitee_name,invitee_email,expires_at').in('team_id', teamIds).eq('role', 'coach').eq('is_lead', true).eq('status', 'pending')
         ])
       : [
           { data: [] as LeadCoachRecord[] },
@@ -124,6 +135,17 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
       ? await supabase.from('users_profile').select('id,full_name').in('id', coachIds)
       : { data: [] as UserProfileRecord[] };
   const coachProfiles = (coachProfilesData ?? []) as UserProfileRecord[];
+  const getLeadCoach = (teamId: string): LeadCoachRecord | null => leadCoaches.find((coach) => coach.team_id === teamId) ?? null;
+  const getPendingInvite = (teamId: string): PendingCoachInvite | null => {
+    const pendingInvite = pendingInvites.find((invite) => invite.team_id === teamId);
+    if (!pendingInvite) return null;
+    return {
+      invite_token: pendingInvite.invite_token,
+      invitee_name: pendingInvite.invitee_name,
+      invitee_email: pendingInvite.invitee_email,
+      expires_at: pendingInvite.expires_at
+    };
+  };
   const getCoachName = (teamId: string): string | null => {
     const leadCoach = leadCoaches.find((coach) => coach.team_id === teamId);
     const profile = leadCoach ? coachProfiles.find((coachProfile) => coachProfile.id === leadCoach.user_id) : null;
@@ -138,14 +160,18 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
     return null;
   };
 
+  const emailPrefix = session.user.email?.split('@')[0]?.trim() ?? '';
+
   return {
     userId: session.user.id,
-    firstName: fullName.length > 0 ? fullName.split(' ')[0] : 'there',
+    firstName: fullName.length > 0 ? fullName.split(' ')[0] : emailPrefix || 'there',
     clubRole: typeof membership?.club_role === 'string' ? membership.club_role : '',
     club,
     teams: rawTeams.map((team) => ({
       ...team,
       coach_name: getCoachName(team.id),
+      coach_user_id: getLeadCoach(team.id)?.user_id ?? null,
+      pending_invite: getPendingInvite(team.id),
       player_count: 0
     })),
     fixtures: fixturesRes.data ?? [],

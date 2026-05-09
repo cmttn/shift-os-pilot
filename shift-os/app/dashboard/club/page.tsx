@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import CoachInviteDrawer from '@/components/dashboard/CoachInviteDrawer';
 import CopyInviteButton from '@/components/dashboard/CopyInviteButton';
 import { getClubData } from '@/lib/dashboard/getClubData';
 
@@ -93,13 +94,20 @@ export default async function ClubDashboardHomePage() {
               <article key={team.id} className="overflow-hidden rounded-2xl border transition-all duration-300 ease-out hover:-translate-y-[3px]" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
                 <div className="h-px w-full opacity-50" style={{ backgroundColor: primaryColour }} />
                 <div className="p-6">
-                  <h4 className="text-lg font-semibold text-white">{team.name}</h4>
-                  <p className="mt-1 text-sm text-white/30">{team.age_group ?? 'Age group not set'}</p>
+                  <Link href={`/dashboard/club/teams/${team.id}`} className="block">
+                    <h4 className="text-lg font-semibold text-white">{team.name}</h4>
+                    <p className="mt-1 text-sm text-white/30">{team.age_group ?? 'Age group not set'}</p>
+                  </Link>
                   <div className="my-4 h-px w-full bg-white/[0.06]" />
                   <p className="text-sm text-white/35">Coach: {team.coach_name ?? 'Unassigned'}</p>
+                  {team.pending_invite ? <CoachInviteDrawer clubId={clubData.club.id} teamId={team.id} primaryColour={primaryColour} initialInvite={team.pending_invite} /> : null}
+                  {team.coach_user_id ? <Link href={`/dashboard/club/teams/${team.id}/coach-view`} className="mt-3 block text-sm font-semibold transition-all duration-300 ease-out hover:text-white" style={{ color: primaryColour }}>View as Coach →</Link> : null}
                   <p className="mt-3 font-mono text-lg font-black tracking-[0.28em]" style={{ color: primaryColour }}>{team.join_code ?? '------'}</p>
                   {team.join_code ? <CopyInviteButton inviteUrl={team.join_code} label="Copy Code" /> : null}
-                  <span className="mt-4 inline-block rounded-full border px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${primaryColour}26`, borderColor: `${primaryColour}4d`, color: primaryColour }}>{team.player_count} players</span>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <span className="inline-block rounded-full border px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${primaryColour}26`, borderColor: `${primaryColour}4d`, color: primaryColour }}>{team.player_count} players</span>
+                    <Link href={`/dashboard/club/teams/${team.id}`} className="text-xl text-white/35 transition-all duration-300 ease-out hover:text-white">→</Link>
+                  </div>
                 </div>
               </article>
             ))}

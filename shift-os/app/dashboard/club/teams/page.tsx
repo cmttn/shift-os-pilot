@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import CoachInviteDrawer from '@/components/dashboard/CoachInviteDrawer';
 import CopyInviteButton from '@/components/dashboard/CopyInviteButton';
 import { getClubData } from '@/lib/dashboard/getClubData';
 
@@ -59,8 +60,10 @@ export default async function ClubTeamsPage() {
               <div className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">{team.name}</h2>
-                    <p className="mt-1 text-sm text-white/30">{team.age_group ?? 'Age group not set'}</p>
+                    <Link href={`/dashboard/club/teams/${team.id}`} className="block">
+                      <h2 className="text-lg font-semibold text-white">{team.name}</h2>
+                      <p className="mt-1 text-sm text-white/30">{team.age_group ?? 'Age group not set'}</p>
+                    </Link>
                   </div>
                   <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${primaryColour}1f`, borderColor: `${primaryColour}40`, color: primaryColour }}>
                     {titleCase(team.gender)}
@@ -68,9 +71,14 @@ export default async function ClubTeamsPage() {
                 </div>
                 <div className="my-4 h-px w-full bg-white/[0.06]" />
                 <p className="text-sm text-white/35">Coach: {team.coach_name ?? 'Unassigned'}</p>
+                {team.pending_invite ? <CoachInviteDrawer clubId={clubData.club.id} teamId={team.id} primaryColour={primaryColour} initialInvite={team.pending_invite} /> : null}
+                {team.coach_user_id ? <Link href={`/dashboard/club/teams/${team.id}/coach-view`} className="mt-3 block text-sm font-semibold transition-all duration-300 ease-out hover:text-white" style={{ color: primaryColour }}>View as Coach →</Link> : null}
                 <p className="mt-3 font-mono text-lg font-black tracking-[0.28em]" style={{ color: primaryColour }}>{team.join_code ?? '------'}</p>
                 {team.join_code ? <CopyInviteButton inviteUrl={team.join_code} label="Copy Code" /> : null}
-                <p className="mt-2 text-sm text-white/35">Players: {team.player_count}</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-sm text-white/35">Players: {team.player_count}</p>
+                  <Link href={`/dashboard/club/teams/${team.id}`} className="text-xl text-white/35 transition-all duration-300 ease-out hover:text-white">→</Link>
+                </div>
               </div>
             </article>
           ))}
