@@ -32,7 +32,7 @@ export default async function DashboardPage() {
     : { count: 0 };
 
   if (membership?.club_role === 'parent' || (linkedPlayerCount ?? 0) > 0) {
-    redirect('/dashboard/parent');
+    redirect('/dashboard/parent/player');
   }
 
   redirect('/dashboard/club');
