@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 type ClubMemberLookup = { id: string };
 
-const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup'];
+const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup', '/auth/callback'];
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({
