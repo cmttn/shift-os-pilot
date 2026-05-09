@@ -23,12 +23,15 @@ export default async function NewPlayerPage() {
   if (!coachData) redirect('/dashboard/club');
 
   const supabase = await createClient();
-  const { data: clubPlayersData } = await supabase
-    .from('players')
-    .select('id,full_name,age_group,team_id')
-    .eq('club_id', coachData.club.id)
-    .eq('is_active', true)
-    .order('full_name', { ascending: true });
+  const { data: clubPlayersData } =
+    coachData.club.id === 'independent'
+      ? { data: [] as RawClubPlayer[] }
+      : await supabase
+          .from('players')
+          .select('id,full_name,age_group,team_id')
+          .eq('club_id', coachData.club.id)
+          .eq('is_active', true)
+          .order('full_name', { ascending: true });
 
   const clubPlayers: ClubPlayerOption[] = ((clubPlayersData ?? []) as RawClubPlayer[]).map((player) => ({
     id: player.id,
@@ -57,7 +60,7 @@ export default async function NewPlayerPage() {
         </div>
 
         <div className="mt-10">
-          <AddPlayerForm clubId={coachData.club.id} invitedBy={coachData.userId} primaryColour={coachData.club.primary_colour} teams={teams} clubPlayers={clubPlayers} />
+          <AddPlayerForm clubId={coachData.club.id === 'independent' ? null : coachData.club.id} invitedBy={coachData.userId} primaryColour={coachData.club.primary_colour} teams={teams} clubPlayers={clubPlayers} />
         </div>
       </div>
     </main>

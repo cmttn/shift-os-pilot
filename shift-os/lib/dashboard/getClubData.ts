@@ -17,6 +17,7 @@ export interface TeamRecord {
   gender: string | null;
   league: string | null;
   season: string | null;
+  join_code: string | null;
   coach_name: string | null;
   player_count: number;
 }
@@ -36,6 +37,7 @@ interface RawTeamRecord {
   gender: string | null;
   league: string | null;
   season: string | null;
+  join_code: string | null;
 }
 
 interface LeadCoachRecord {
@@ -86,7 +88,7 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
   const [teamsRes, fixturesRes, playersCountRes, coachesCountRes, profileRes] = await Promise.all([
     supabase
       .from('teams')
-      .select('id,name,age_group,gender,league,season')
+      .select('id,name,age_group,gender,league,season,join_code')
       .eq('club_id', club.id)
       .eq('is_active', true)
       .order('name', { ascending: true }),

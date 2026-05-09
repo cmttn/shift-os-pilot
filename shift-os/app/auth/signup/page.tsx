@@ -3,12 +3,17 @@
 import Link from 'next/link';
 import { FormEvent, Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { completePendingInvite } from '@/lib/auth/completeInvite';
 import { createClient } from '@/lib/supabase/client';
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intendedRole = searchParams.get('role');
+  const inviteToken = searchParams.get('invite');
+  const clubId = searchParams.get('club');
+  const teamId = searchParams.get('team');
+  const playerId = searchParams.get('player');
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -41,7 +46,7 @@ function SignupForm() {
     setLoading(true);
     const supabase = createClient();
     const normalizedEmail = email.trim().toLowerCase();
-    const nextPath = intendedRole === 'club_admin' || !intendedRole ? '/onboarding' : '/dashboard';
+    const nextPath = inviteToken ? '/dashboard' : intendedRole === 'club_admin' || !intendedRole ? '/onboarding' : '/dashboard';
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
@@ -49,7 +54,11 @@ function SignupForm() {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         data: {
           full_name: fullName.trim(),
-          intended_role: intendedRole
+          intended_role: intendedRole,
+          invite_token: inviteToken,
+          club_id: clubId,
+          team_id: teamId,
+          player_id: playerId
         }
       }
     });
@@ -75,8 +84,13 @@ function SignupForm() {
       return;
     }
 
-    router.push(nextPath);
-    router.refresh();
+    try {
+      const inviteRedirect = await completePendingInvite(supabase, data.user.id, data.user.user_metadata);
+      router.push(inviteRedirect ?? nextPath);
+      router.refresh();
+    } catch (inviteError) {
+      setError(inviteError instanceof Error ? inviteError.message : 'Your account was created, but the invite could not be accepted.');
+    }
   }
 
   return (

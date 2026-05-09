@@ -8,6 +8,7 @@ export interface CoachTeamRecord {
   gender: string | null;
   league: string | null;
   season: string | null;
+  join_code: string | null;
   player_count: number;
   is_lead: boolean;
 }
@@ -34,6 +35,7 @@ export interface CoachDashboardData {
   teams: CoachTeamRecord[];
   players: CoachPlayerRecord[];
   fixtures: FixtureRecord[];
+  pendingRequests: PendingJoinRequestRecord[];
 }
 
 interface TeamCoachRow {
@@ -43,11 +45,13 @@ interface TeamCoachRow {
 
 interface RawCoachTeamRecord {
   id: string;
+  club_id: string | null;
   name: string;
   age_group: string | null;
   gender: string | null;
   league: string | null;
   season: string | null;
+  join_code: string | null;
 }
 
 interface RawCoachPlayerRecord {
@@ -64,6 +68,16 @@ interface RawCoachPlayerRecord {
   guardian_2_email: string | null;
 }
 
+export interface PendingJoinRequestRecord {
+  id: string;
+  team_id: string;
+  full_name: string;
+  dob: string;
+  parent_name: string;
+  parent_contact: string;
+  created_at: string | null;
+}
+
 export async function getCoachDashboardData(): Promise<CoachDashboardData | null> {
   const supabase = await createClient();
   const { data: sessionData } = await supabase.auth.getSession();
@@ -78,12 +92,6 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
     .eq('is_active', true)
     .maybeSingle();
 
-  const membershipClub = membership?.clubs;
-  const club = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;
-  const clubRole = typeof membership?.club_role === 'string' ? membership.club_role : '';
-
-  if (!club || clubRole !== 'coach') return null;
-
   const [profileRes, assignmentsRes] = await Promise.all([
     supabase.from('users_profile').select('full_name').eq('id', session.user.id).maybeSingle(),
     supabase.from('team_coaches').select('team_id,is_lead').eq('user_id', session.user.id)
@@ -93,34 +101,58 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
   const fullName = profile?.full_name?.trim() ?? '';
   const assignments = (assignmentsRes.data ?? []) as TeamCoachRow[];
   const teamIds = assignments.map((assignment) => assignment.team_id);
+  const clubRole = typeof membership?.club_role === 'string' ? membership.club_role : teamIds.length > 0 ? 'coach' : '';
 
-  const [teamsRes, fixturesRes, playersRes] =
+  if (clubRole !== 'coach') return null;
+
+  const [teamsRes, playersRes, requestsRes] =
     teamIds.length > 0
       ? await Promise.all([
           supabase
             .from('teams')
-            .select('id,name,age_group,gender,league,season')
-            .eq('club_id', club.id)
+            .select('id,club_id,name,age_group,gender,league,season,join_code')
             .eq('is_active', true)
             .in('id', teamIds)
             .order('name', { ascending: true }),
-          supabase.from('fixtures').select('id,fixture_date,opponent,home_away,team_name').eq('club_id', club.id).order('fixture_date', { ascending: true }),
           supabase
             .from('players')
             .select('id,team_id,full_name,age_group,date_of_birth,guardian_1_name,guardian_1_phone,guardian_1_email,guardian_2_name,guardian_2_phone,guardian_2_email')
-            .eq('club_id', club.id)
             .in('team_id', teamIds)
             .eq('is_active', true)
-            .order('full_name', { ascending: true })
+            .order('full_name', { ascending: true }),
+          supabase
+            .from('pending_join_requests')
+            .select('id,team_id,full_name,dob,parent_name,parent_contact,created_at')
+            .in('team_id', teamIds)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: true })
         ])
       : [
           { data: [] as RawCoachTeamRecord[] },
-          { data: [] as FixtureRecord[] },
-          { data: [] as RawCoachPlayerRecord[] }
+          { data: [] as RawCoachPlayerRecord[] },
+          { data: [] as PendingJoinRequestRecord[] }
         ];
 
   const players = (playersRes.data ?? []) as CoachPlayerRecord[];
   const rawTeams = (teamsRes.data ?? []) as RawCoachTeamRecord[];
+  const membershipClub = membership?.clubs;
+  const memberClub = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;
+  const firstClubId = rawTeams.find((team) => team.club_id)?.club_id ?? null;
+  const { data: teamClubData } =
+    !memberClub && firstClubId
+      ? await supabase.from('clubs').select('id,name,ethos,badge_url,primary_colour,secondary_colour,plan_tier').eq('id', firstClubId).maybeSingle()
+      : { data: null };
+  const club =
+    memberClub ??
+    ((teamClubData as ClubRecord | null) ?? {
+      id: 'independent',
+      name: 'Independent Team',
+      ethos: 'Coach-led workspace.',
+      badge_url: null,
+      primary_colour: '#00C851',
+      secondary_colour: '#080a0f',
+      plan_tier: 'free'
+    });
   const teams = rawTeams.map((team) => {
     const assignment = assignments.find((item) => item.team_id === team.id);
     const playerCount = players.filter((player) => player.team_id === team.id).length;
@@ -131,8 +163,11 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
     };
   });
   const teamNames = new Set(teams.map((team) => team.name));
-  const fixtures = ((fixturesRes.data ?? []) as FixtureRecord[]).filter((fixture) => teamNames.has(fixture.team_name));
-
+  const clubIds = Array.from(new Set(rawTeams.map((team) => team.club_id).filter((clubId): clubId is string => Boolean(clubId))));
+  const { data: fixturesData } =
+    clubIds.length > 0
+      ? await supabase.from('fixtures').select('id,fixture_date,opponent,home_away,team_name').in('club_id', clubIds).order('fixture_date', { ascending: true })
+      : { data: [] as FixtureRecord[] };
   return {
     userId: session.user.id,
     firstName: fullName.length > 0 ? fullName.split(' ')[0] : 'Coach',
@@ -140,6 +175,7 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
     club,
     teams,
     players,
-    fixtures
+    fixtures: ((fixturesData ?? []) as FixtureRecord[]).filter((fixture) => teamNames.has(fixture.team_name)),
+    pendingRequests: (requestsRes.data ?? []) as PendingJoinRequestRecord[]
   };
 }

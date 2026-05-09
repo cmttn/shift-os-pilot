@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { completePendingInvite } from '@/lib/auth/completeInvite';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
@@ -11,7 +12,11 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(new URL(next, requestUrl.origin));
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+      const inviteRedirect = user ? await completePendingInvite(supabase, user.id, user.user_metadata).catch(() => null) : null;
+      return NextResponse.redirect(new URL(inviteRedirect ?? next, requestUrl.origin));
     }
   }
 

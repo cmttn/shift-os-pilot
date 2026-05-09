@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import CopyInviteButton from '@/components/dashboard/CopyInviteButton';
 import { getClubData } from '@/lib/dashboard/getClubData';
 
 function getContrastText(hexColour: string): string {
@@ -96,6 +97,8 @@ export default async function ClubDashboardHomePage() {
                   <p className="mt-1 text-sm text-white/30">{team.age_group ?? 'Age group not set'}</p>
                   <div className="my-4 h-px w-full bg-white/[0.06]" />
                   <p className="text-sm text-white/35">Coach: {team.coach_name ?? 'Unassigned'}</p>
+                  <p className="mt-3 font-mono text-lg font-black tracking-[0.28em]" style={{ color: primaryColour }}>{team.join_code ?? '------'}</p>
+                  {team.join_code ? <CopyInviteButton inviteUrl={team.join_code} label="Copy Code" /> : null}
                   <span className="mt-4 inline-block rounded-full border px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${primaryColour}26`, borderColor: `${primaryColour}4d`, color: primaryColour }}>{team.player_count} players</span>
                 </div>
               </article>

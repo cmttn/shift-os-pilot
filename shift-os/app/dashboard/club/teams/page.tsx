@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import CopyInviteButton from '@/components/dashboard/CopyInviteButton';
 import { getClubData } from '@/lib/dashboard/getClubData';
 
 function canManageTeams(role: string): boolean {
@@ -67,6 +68,8 @@ export default async function ClubTeamsPage() {
                 </div>
                 <div className="my-4 h-px w-full bg-white/[0.06]" />
                 <p className="text-sm text-white/35">Coach: {team.coach_name ?? 'Unassigned'}</p>
+                <p className="mt-3 font-mono text-lg font-black tracking-[0.28em]" style={{ color: primaryColour }}>{team.join_code ?? '------'}</p>
+                {team.join_code ? <CopyInviteButton inviteUrl={team.join_code} label="Copy Code" /> : null}
                 <p className="mt-2 text-sm text-white/35">Players: {team.player_count}</p>
               </div>
             </article>

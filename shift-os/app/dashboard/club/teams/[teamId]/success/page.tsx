@@ -19,6 +19,7 @@ interface TeamDetails {
   age_group: string | null;
   gender: string | null;
   club_id: string;
+  join_code: string | null;
 }
 
 function canManageTeams(role: string): boolean {
@@ -38,7 +39,7 @@ export default async function TeamCreatedSuccessPage({ params, searchParams }: S
   const supabase = await createClient();
   const { data: teamData } = await supabase
     .from('teams')
-    .select('id,name,age_group,gender,club_id')
+    .select('id,name,age_group,gender,club_id,join_code')
     .eq('id', params.teamId)
     .eq('club_id', clubData.club.id)
     .maybeSingle();
@@ -79,6 +80,12 @@ export default async function TeamCreatedSuccessPage({ params, searchParams }: S
             <p className="text-xs uppercase tracking-[0.22em] text-white/25">Gender</p>
             <p className="mt-2 text-base font-semibold text-white">{titleCase(team.gender)}</p>
           </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <p className="text-xs uppercase tracking-[0.28em] text-white/25">Team Join Code</p>
+          <code className="mt-3 block font-mono text-4xl font-black tracking-[0.32em]" style={{ color: primaryColour }}>{team.join_code ?? '------'}</code>
+          {team.join_code ? <CopyInviteButton inviteUrl={team.join_code} label="Copy Code" /> : null}
         </div>
 
         {inviteUrl ? (

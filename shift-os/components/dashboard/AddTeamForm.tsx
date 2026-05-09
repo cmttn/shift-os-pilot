@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { generateJoinCode } from '@/lib/utils/generateJoinCode';
 
 type CoachMode = 'existing' | 'invite';
 type Gender = 'boys' | 'girls' | 'mixed';
@@ -136,6 +137,7 @@ export default function AddTeamForm({ clubId, invitedBy, primaryColour, coaches 
           gender,
           league: league.trim() || null,
           season: season.trim() || null,
+          join_code: generateJoinCode(),
           is_active: true
         })
         .select('id')

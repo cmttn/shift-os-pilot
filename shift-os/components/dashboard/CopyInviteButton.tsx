@@ -4,9 +4,10 @@ import { useState } from 'react';
 
 interface CopyInviteButtonProps {
   inviteUrl: string;
+  label?: string;
 }
 
-export default function CopyInviteButton({ inviteUrl }: CopyInviteButtonProps) {
+export default function CopyInviteButton({ inviteUrl, label = 'Copy Link' }: CopyInviteButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -21,7 +22,7 @@ export default function CopyInviteButton({ inviteUrl }: CopyInviteButtonProps) {
       onClick={handleCopy}
       className="mt-4 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 ease-out hover:bg-white/[0.06]"
     >
-      {copied ? 'Copied!' : 'Copy Link'}
+      {copied ? 'Copied!' : label}
     </button>
   );
 }

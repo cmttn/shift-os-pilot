@@ -20,7 +20,7 @@ interface ClubPlayerOption {
 }
 
 interface AddPlayerFormProps {
-  clubId: string;
+  clubId: string | null;
   invitedBy: string;
   primaryColour: string;
   teams: CoachTeamOption[];
@@ -93,6 +93,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
   };
 
   const createParentInvite = async (playerId: string, name: string, email: string, phone: string): Promise<string> => {
+    if (!clubId) return '';
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const { error: inviteError } = await createClient().from('pending_invites').insert({

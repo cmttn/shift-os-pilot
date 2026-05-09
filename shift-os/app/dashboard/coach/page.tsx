@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import CopyInviteButton from '@/components/dashboard/CopyInviteButton';
+import PendingJoinRequests from '@/components/dashboard/PendingJoinRequests';
+import BottomNav from '@/components/mobile/BottomNav';
 import { getCoachDashboardData } from '@/lib/dashboard/getCoachDashboardData';
 
 function darkenHex(hex: string, percent: number): string {
@@ -73,7 +76,7 @@ export default async function CoachDashboardPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-5 pb-16 pt-10 md:px-10">
+      <div className="mx-auto max-w-7xl px-5 pb-24 pt-10 md:px-10">
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {coachData.teams.length === 0 ? (
             <article className="rounded-2xl border p-8 lg:col-span-3" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -97,11 +100,15 @@ export default async function CoachDashboardPage() {
                   <div className="my-4 h-px w-full bg-white/[0.06]" />
                   <p className="text-sm text-white/35">Gender: {titleCase(team.gender)}</p>
                   <p className="mt-2 text-sm text-white/35">League: {team.league ?? 'Not set'}</p>
+                  <p className="mt-4 font-mono text-lg font-black tracking-[0.28em]" style={{ color: primaryColour }}>{team.join_code ?? '------'}</p>
+                  {team.join_code ? <CopyInviteButton inviteUrl={team.join_code} label="Copy Code" /> : null}
                 </div>
               </article>
             ))
           )}
         </section>
+
+        <PendingJoinRequests primaryColour={primaryColour} requests={coachData.pendingRequests} teams={coachData.teams} />
 
         <section className="mt-12">
           <h2 className="text-2xl font-bold text-white">Coach Tools</h2>
@@ -197,6 +204,7 @@ export default async function CoachDashboardPage() {
           ))}
         </section>
       </div>
+      <BottomNav primaryColour={primaryColour} items={[{ href: '/dashboard/coach', label: 'Home', icon: '⌂' }, { href: '/dashboard/coach/players/new', label: 'Squad', icon: '+' }, { href: '/dashboard/coach', label: 'Games', icon: '◷' }, { href: '/dashboard/coach', label: 'Stats', icon: '▣' }]} />
     </main>
   );
 }

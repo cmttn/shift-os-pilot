@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import ParentAvailabilityToggle from '@/components/dashboard/ParentAvailabilityToggle';
+import BottomNav from '@/components/mobile/BottomNav';
 import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
 
 function darkenHex(hex: string, percent: number): string {
@@ -37,7 +38,7 @@ export default async function ParentDashboardPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-5 pb-16 pt-10 md:px-10">
+      <div className="mx-auto max-w-7xl px-5 pb-24 pt-10 md:px-10">
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {parentData.players.map((player) => {
             const team = parentData.teams.find((item) => item.id === player.team_id);
@@ -100,6 +101,7 @@ export default async function ParentDashboardPage() {
           ))}
         </section>
       </div>
+      <BottomNav primaryColour={primaryColour} items={[{ href: '/dashboard/parent/player', label: 'Home', icon: '⌂' }, { href: '/dashboard/parent/player', label: 'Fixtures', icon: '◷' }, { href: '/dashboard/parent/player', label: 'Avail', icon: '✓' }, { href: '/dashboard/parent/player', label: 'Team', icon: '▣' }]} />
     </main>
   );
 }
