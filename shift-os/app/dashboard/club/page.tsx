@@ -2,6 +2,7 @@ import Link from 'next/link';
 import CoachInviteDrawer from '@/components/dashboard/CoachInviteDrawer';
 import CopyInviteButton from '@/components/dashboard/CopyInviteButton';
 import { getClubData } from '@/lib/dashboard/getClubData';
+import { createClient } from '@/lib/supabase/server';
 
 function getContrastText(hexColour: string): string {
   const hex = hexColour.replace('#', '');
@@ -33,6 +34,14 @@ function getGreeting(): 'morning' | 'afternoon' | 'evening' {
   return 'evening';
 }
 
+function getComplianceStatus(expiryDate: string | null): 'compliant' | 'expiring' | 'expired' {
+  if (!expiryDate) return 'expired';
+  const days = Math.ceil((new Date(expiryDate).valueOf() - Date.now()) / 86400000);
+  if (days <= 0) return 'expired';
+  if (days <= 90) return 'expiring';
+  return 'compliant';
+}
+
 const toolCards = [
   { icon: '🕐', name: 'Game Time Tracker', description: 'Minutes, rotations, and match rhythm.', tier: 'Free' },
   { icon: '✅', name: 'Availability Manager', description: 'Know who is ready before selection.', tier: 'Free' },
@@ -45,6 +54,7 @@ const toolCards = [
 export default async function ClubDashboardHomePage() {
   const clubData = await getClubData();
   if (!clubData) return null;
+  const supabase = await createClient();
 
   const primaryColour = clubData.club.primary_colour;
   const darkerPrimary = darkenHex(primaryColour, 15);
@@ -57,6 +67,26 @@ export default async function ClubDashboardHomePage() {
     ['Total Coaches', clubData.totalCoaches],
     ['Upcoming Fixtures', upcomingFixtures.length]
   ];
+  const teamIds = clubData.teams.map((team) => team.id);
+  const { data: coachesData } = teamIds.length > 0 ? await supabase.from('team_coaches').select('user_id').in('team_id', teamIds) : { data: [] as Array<{ user_id: string }> };
+  const coachIds = Array.from(new Set(((coachesData ?? []) as Array<{ user_id: string }>).map((coach) => coach.user_id)));
+  const [{ data: dbsData }, { data: qualificationData }] = await Promise.all([
+    coachIds.length > 0 ? supabase.from('coach_dbs').select('user_id,expiry_date').in('user_id', coachIds) : Promise.resolve({ data: [] as Array<{ user_id: string; expiry_date: string | null }> }),
+    coachIds.length > 0 ? supabase.from('coach_qualifications').select('user_id,expiry_date').in('user_id', coachIds) : Promise.resolve({ data: [] as Array<{ user_id: string; expiry_date: string | null }> })
+  ]);
+  const dbsRows = (dbsData ?? []) as Array<{ user_id: string; expiry_date: string | null }>;
+  const qualificationRows = (qualificationData ?? []) as Array<{ user_id: string; expiry_date: string | null }>;
+  const coachCompliance = coachIds.map((coachId) => {
+    const dbsStatus = getComplianceStatus(dbsRows.find((row) => row.user_id === coachId)?.expiry_date ?? null);
+    const qualificationStatuses = qualificationRows.filter((row) => row.user_id === coachId).map((row) => getComplianceStatus(row.expiry_date));
+    const qualificationStatus = qualificationStatuses.length === 0 || qualificationStatuses.includes('expired') ? 'expired' : qualificationStatuses.includes('expiring') ? 'expiring' : 'compliant';
+    return dbsStatus === 'expired' || qualificationStatus === 'expired' ? 'expired' : dbsStatus === 'expiring' || qualificationStatus === 'expiring' ? 'expiring' : 'compliant';
+  });
+  const complianceCounts = {
+    compliant: coachCompliance.filter((status) => status === 'compliant').length,
+    expiring: coachCompliance.filter((status) => status === 'expiring').length,
+    expired: coachCompliance.filter((status) => status === 'expired').length
+  };
 
   return (
     <div className="-mx-4 -my-4 min-h-screen px-4 pb-16 pt-10 md:-mx-8 md:-my-8 md:px-8" style={{ background: `radial-gradient(ellipse at top, ${primaryColour}10 0%, transparent 50%), #080a0f` }}>
@@ -74,6 +104,20 @@ export default async function ClubDashboardHomePage() {
           </article>
         ))}
       </section>
+
+      <Link href="/dashboard/club/compliance" className="mt-6 block rounded-2xl border p-6 transition-all duration-300 ease-out hover:-translate-y-0.5" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/30">Compliance Overview</p>
+            <h3 className="mt-2 text-2xl font-bold text-white">Coach checks and qualifications</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <span className="rounded-xl bg-white/[0.03] px-4 py-3"><strong className="block text-2xl text-emerald-400">{complianceCounts.compliant}</strong><small className="text-white/35">compliant</small></span>
+            <span className="rounded-xl bg-white/[0.03] px-4 py-3"><strong className="block text-2xl text-amber-400">{complianceCounts.expiring}</strong><small className="text-white/35">expiring</small></span>
+            <span className="rounded-xl bg-white/[0.03] px-4 py-3"><strong className="block text-2xl text-red-400">{complianceCounts.expired}</strong><small className="text-white/35">expired</small></span>
+          </div>
+        </div>
+      </Link>
 
       <section className="mt-12">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

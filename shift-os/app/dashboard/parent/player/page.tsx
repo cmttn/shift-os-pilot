@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import ParentAvailabilityToggle from '@/components/dashboard/ParentAvailabilityToggle';
+import ParentFixturesClient from '@/components/dashboard/ParentFixturesClient';
 import BottomNav from '@/components/mobile/BottomNav';
 import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
 
@@ -11,19 +11,12 @@ function darkenHex(hex: string, percent: number): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
 export default async function ParentDashboardPage() {
   const parentData = await getParentDashboardData();
   if (!parentData) redirect('/dashboard');
 
   const primaryColour = parentData.club.primary_colour;
   const darkerPrimary = darkenHex(primaryColour, 15);
-  const upcomingFixtures = parentData.fixtures.filter((fixture) => new Date(fixture.fixture_date) >= new Date());
   const teamNames = parentData.teams.map((team) => team.name).join(', ') || 'Team not linked yet';
 
   return (
@@ -48,7 +41,7 @@ export default async function ParentDashboardPage() {
                 <div className="p-6">
                   <p className="text-xs uppercase tracking-[0.24em] text-white/25">Player</p>
                   <h2 className="mt-3 text-2xl font-bold text-white">{player.full_name}</h2>
-                  <p className="mt-2 text-sm text-white/35">{team?.name ?? 'Team not linked'} / {player.age_group ?? 'Age group not set'}</p>
+                  <p className="mt-2 text-sm text-white/35">{team?.name ?? 'Team not linked'} / {player.dob ?? 'DOB not set'}</p>
                 </div>
               </article>
             );
@@ -59,28 +52,15 @@ export default async function ParentDashboardPage() {
           <article className="rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
             <h2 className="text-2xl font-bold text-white">Fixtures</h2>
             <div className="mt-6 space-y-3">
-              {upcomingFixtures.length === 0 ? (
-                <p className="rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-5 text-sm text-white/35">No upcoming fixtures have been posted yet.</p>
-              ) : (
-                upcomingFixtures.slice(0, 6).map((fixture) => (
-                  <div key={fixture.id} className="grid grid-cols-1 gap-2 rounded-[10px] border px-5 py-4 text-sm sm:grid-cols-4 sm:items-center" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)', borderLeft: `3px solid ${primaryColour}` }}>
-                    <span className="font-semibold" style={{ color: primaryColour }}>{formatDate(fixture.fixture_date)}</span>
-                    <span className="text-white">{fixture.opponent}</span>
-                    <span className="capitalize text-white/35">{fixture.home_away}</span>
-                    <span className="text-white/35">{fixture.team_name}</span>
-                  </div>
-                ))
-              )}
+              <ParentFixturesClient sessions={parentData.sessions} primaryColour={primaryColour} />
             </div>
           </article>
 
           <article className="rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
             <h2 className="text-2xl font-bold text-white">Availability</h2>
-            <p className="mt-1 text-sm text-white/30">Quick toggles are ready here; saving history comes in the next rollout.</p>
+            <p className="mt-1 text-sm text-white/30">Use each fixture card to confirm availability. Coach notes update live.</p>
             <div className="mt-6 space-y-3">
-              {parentData.players.map((player) => (
-                <ParentAvailabilityToggle key={player.id} primaryColour={primaryColour} playerName={player.full_name} label="Next fixture or training session" />
-              ))}
+              {parentData.players.map((player) => <p key={player.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-white/45">{player.full_name}</p>)}
             </div>
           </article>
         </section>

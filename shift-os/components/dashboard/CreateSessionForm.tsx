@@ -20,6 +20,12 @@ export default function CreateSessionForm({ coachData }: CreateSessionFormProps)
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
+  const [fullAddress, setFullAddress] = useState('');
+  const [postcode, setPostcode] = useState('');
+  const [oppositionContactName, setOppositionContactName] = useState('');
+  const [oppositionContactPhone, setOppositionContactPhone] = useState('');
+  const [coachNotes, setCoachNotes] = useState('');
+  const [tournifyLink, setTournifyLink] = useState('');
   const [opponent, setOpponent] = useState('');
   const [title, setTitle] = useState('');
   const [isHome, setIsHome] = useState(true);
@@ -59,6 +65,12 @@ export default function CreateSessionForm({ coachData }: CreateSessionFormProps)
         opponent: type === 'match' ? opponent.trim() : null,
         session_date: sessionDate,
         location: location.trim() || null,
+        full_address: fullAddress.trim() || null,
+        postcode: postcode.trim() || null,
+        opposition_contact_name: oppositionContactName.trim() || null,
+        opposition_contact_phone: oppositionContactPhone.trim() || null,
+        coach_notes: coachNotes.trim() || null,
+        tournify_link: type === 'tournament' ? tournifyLink.trim() || null : null,
         is_home: isHome,
         notes: weekOffPlayerIds.length > 0 ? `Week off before poll: ${weekOffPlayerIds.join(',')}` : null
       })
@@ -108,6 +120,14 @@ export default function CreateSessionForm({ coachData }: CreateSessionFormProps)
         <input value={title} onChange={(event) => setTitle(event.target.value)} className={inputClass} placeholder={type === 'training' ? 'Session title (optional)' : 'Tournament name'} />
       )}
       <input value={location} onChange={(event) => setLocation(event.target.value)} className={inputClass} placeholder={type === 'tournament' ? 'Venue' : 'Location (optional)'} />
+      <input value={fullAddress} onChange={(event) => setFullAddress(event.target.value)} className={inputClass} placeholder="Full address" />
+      <div className="grid grid-cols-2 gap-3">
+        <input value={postcode} onChange={(event) => setPostcode(event.target.value)} className={inputClass} placeholder="Postcode" />
+        <input value={oppositionContactPhone} onChange={(event) => setOppositionContactPhone(event.target.value)} className={inputClass} placeholder="Opposition phone" />
+      </div>
+      <input value={oppositionContactName} onChange={(event) => setOppositionContactName(event.target.value)} className={inputClass} placeholder="Opposition contact name" />
+      <textarea value={coachNotes} onChange={(event) => setCoachNotes(event.target.value)} className={`${inputClass} min-h-[112px]`} placeholder="Coach notes" />
+      {type === 'tournament' ? <input value={tournifyLink} onChange={(event) => setTournifyLink(event.target.value)} className={inputClass} placeholder="Tournify link" /> : null}
 
       <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
         <h2 className="font-bold text-white">Week Off Players</h2>

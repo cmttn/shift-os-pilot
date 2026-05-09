@@ -14,6 +14,7 @@ export interface SessionDetailResponse {
   player_id: string;
   player_token: string;
   status: 'available' | 'unavailable' | 'week_off' | 'pending';
+  note?: string | null;
 }
 
 export interface SessionDetailData {
@@ -25,6 +26,12 @@ export interface SessionDetailData {
     opponent: string | null;
     session_date: string;
     location: string | null;
+    opposition_contact_name: string | null;
+    opposition_contact_phone: string | null;
+    full_address: string | null;
+    postcode: string | null;
+    coach_notes: string | null;
+    tournify_link: string | null;
     is_home: boolean;
     poll_sent: boolean;
     poll_sent_at: string | null;
@@ -49,13 +56,6 @@ function formatDate(value: string): string {
   return `${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} at ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
-function statusLabel(status: string): string {
-  if (status === 'available') return '✅ Available';
-  if (status === 'unavailable') return '❌ Not Available';
-  if (status === 'week_off') return '🏖️ Week Off';
-  return '⏳ Pending';
-}
-
 function statusColour(status: string): string {
   if (status === 'available') return '#10b981';
   if (status === 'unavailable') return '#ef4444';
@@ -69,6 +69,7 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
   const [pollSent, setPollSent] = useState(data.session.poll_sent);
   const [pollSentAt, setPollSentAt] = useState(data.session.poll_sent_at);
   const [shareMessage, setShareMessage] = useState('');
+  const [coachNotes, setCoachNotes] = useState(data.session.coach_notes ?? '');
   const [error, setError] = useState('');
   const primaryColour = data.team.primaryColour;
 
@@ -83,14 +84,15 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
   function buildMessage(nextResponses: SessionDetailResponse[]): string {
     const origin = window.location.origin;
     const responseByPlayer = new Map(nextResponses.map((response) => [response.player_id, response]));
-    const activePlayers = data.players.filter((player) => !weekOffIds.includes(player.id));
-    const weekOffPlayers = data.players.filter((player) => weekOffIds.includes(player.id));
+    const activePlayers = data.players.filter((player) => !weekOffIds.includes(player.id) && responseByPlayer.get(player.id)?.note !== 'restricted_by_club');
+    const weekOffPlayers = data.players.filter((player) => weekOffIds.includes(player.id) && responseByPlayer.get(player.id)?.note !== 'restricted_by_club');
+    const restrictedPlayers = data.players.filter((player) => responseByPlayer.get(player.id)?.note === 'restricted_by_club');
     const header = [
-      `📋 *Availability Check — ${data.team.name}*`,
+      `Availability Check - ${data.team.name}`,
       '',
-      `*${data.session.type}* ${data.session.opponent ? `vs ${data.session.opponent}` : data.session.title ?? ''}`,
-      `📅 ${formatDate(data.session.session_date)}`,
-      `📍 ${data.session.location ?? 'Location TBC'}`,
+      `${data.session.type.toUpperCase()} ${data.session.opponent ? `vs ${data.session.opponent}` : data.session.title ?? ''}`,
+      `Date: ${formatDate(data.session.session_date)}`,
+      `Location: ${data.session.full_address || data.session.location || 'Location TBC'}`,
       '',
       'Please confirm availability for each player:',
       ''
@@ -99,29 +101,38 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
       const response = responseByPlayer.get(player.id);
       const token = response?.player_token ?? '';
       return [
-        `👤 *${player.full_name}*`,
-        `✅ Available → ${origin}/poll/${data.session.session_token}/${token}/available`,
-        `❌ Not Available → ${origin}/poll/${data.session.session_token}/${token}/unavailable`,
+        player.full_name,
+        `Available -> ${origin}/poll/${data.session.session_token}/${token}/available`,
+        `Not Available -> ${origin}/poll/${data.session.session_token}/${token}/unavailable`,
         ''
       ];
     });
-    const weekOffLines = weekOffPlayers.length > 0 ? ['', ...weekOffPlayers.map((player) => `🏖️ ${player.full_name} — Week Off (no response needed)`), ''] : [];
-    return [...header, ...playerLines, ...weekOffLines, 'Powered by Shift OS'].join('\n');
+    const weekOffLines = weekOffPlayers.length > 0 ? ['', ...weekOffPlayers.map((player) => `${player.full_name} - Week Off (no response needed)`), ''] : [];
+    const restrictedLines = restrictedPlayers.length > 0 ? ['', ...restrictedPlayers.map((player) => `${player.full_name} - Unavailable (contact club)`), ''] : [];
+    return [...header, ...playerLines, ...weekOffLines, ...restrictedLines, 'Powered by Shift OS'].join('\n');
   }
 
   async function sendPoll() {
     setError('');
+    const supabase = createClient();
+    const playerIds = data.players.map((player) => player.id);
+    const today = new Date().toISOString().slice(0, 10);
+    const [{ data: suspensions }, { data: subscriptions }] = await Promise.all([
+      playerIds.length > 0 ? supabase.from('player_suspensions').select('player_id').in('player_id', playerIds).eq('is_active', true).lte('start_date', today).or(`end_date.is.null,end_date.gte.${today}`) : Promise.resolve({ data: [] as Array<{ player_id: string }> }),
+      playerIds.length > 0 ? supabase.from('player_subscriptions').select('player_id').in('player_id', playerIds).eq('status', 'overdue') : Promise.resolve({ data: [] as Array<{ player_id: string }> })
+    ]);
+    const restrictedIds = new Set([...(suspensions ?? []).map((item) => item.player_id), ...(subscriptions ?? []).map((item) => item.player_id)]);
     const rows = data.players.map((player) => ({
       session_id: data.session.id,
       player_id: player.id,
-      status: weekOffIds.includes(player.id) ? 'week_off' : 'pending'
+      status: restrictedIds.has(player.id) || weekOffIds.includes(player.id) ? 'week_off' : 'pending',
+      note: restrictedIds.has(player.id) ? 'restricted_by_club' : null
     }));
 
-    const supabase = createClient();
     const { data: inserted, error: insertError } = await supabase
       .from('poll_responses')
       .upsert(rows, { onConflict: 'session_id,player_id' })
-      .select('player_id,player_token,status');
+      .select('player_id,player_token,status,note');
     if (insertError) {
       setError(insertError.message);
       return;
@@ -152,19 +163,35 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
     await navigator.clipboard.writeText(shareMessage);
   }
 
+  async function saveCoachNotes() {
+    setError('');
+    const { error: updateError } = await createClient().from('sessions').update({ coach_notes: coachNotes.trim() || null }).eq('id', data.session.id);
+    if (updateError) setError(updateError.message);
+  }
+
   return (
     <main className="min-h-screen px-5 pb-[112px] pt-8 text-white" style={{ backgroundColor: '#080a0f' }}>
       <div className="mx-auto max-w-[480px]">
-        <Link href="/dashboard/coach" className="text-sm text-white/40 transition-all duration-300 ease-out hover:text-white">← back</Link>
+        <Link href="/dashboard/coach" className="text-sm text-white/40 transition-all duration-300 ease-out hover:text-white">Back</Link>
         <section className="mt-5 rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <span className="rounded-full px-3 py-1 text-xs font-semibold uppercase" style={{ backgroundColor: `${primaryColour}26`, color: primaryColour }}>{data.session.type}</span>
           <h1 className="mt-4 text-3xl font-black">{data.session.opponent ? `vs ${data.session.opponent}` : data.session.title ?? data.session.type}</h1>
           <p className="mt-2 text-sm text-white/40">{formatDate(data.session.session_date)}</p>
-          <p className="mt-1 text-sm text-white/40">{data.session.location ?? 'Location TBC'}</p>
+          <p className="mt-1 text-sm text-white/40">{data.session.full_address || data.session.location || 'Location TBC'}{data.session.postcode ? `, ${data.session.postcode}` : ''}</p>
+          {data.session.opposition_contact_name || data.session.opposition_contact_phone ? <p className="mt-1 text-sm text-white/40">Contact: {[data.session.opposition_contact_name, data.session.opposition_contact_phone].filter(Boolean).join(' - ')}</p> : null}
+          {data.session.tournify_link ? <a href={data.session.tournify_link} target="_blank" rel="noreferrer" className="mt-4 inline-block rounded-full border border-white/10 px-4 py-2 text-sm text-white">View Bracket</a> : null}
         </section>
 
         <section className="mt-5 rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <p className="text-sm text-white/55">✅{counts.available} ❌{counts.unavailable} ⏳{counts.pending} 🏖️{counts.weekOff}</p>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-bold">Coach notes</h2>
+            <button type="button" onClick={saveCoachNotes} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white">Save</button>
+          </div>
+          <textarea value={coachNotes} onChange={(event) => setCoachNotes(event.target.value)} className="mt-3 min-h-[96px] w-full rounded-xl border border-white/[0.08] bg-white/[0.04] p-3 text-sm text-white outline-none" placeholder="Add notes for this fixture" />
+        </section>
+
+        <section className="mt-5 rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <p className="text-sm text-white/55">Available {counts.available} / Not available {counts.unavailable} / Pending {counts.pending} / Week off {counts.weekOff}</p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full" style={{ width: `${confirmedPercent}%`, backgroundColor: primaryColour }} /></div>
         </section>
 
@@ -172,12 +199,16 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
           {data.players.map((player) => {
             const response = responses.find((item) => item.player_id === player.id);
             const status = response?.status ?? (weekOffIds.includes(player.id) ? 'week_off' : 'pending');
+            const restricted = response?.note === 'restricted_by_club';
             return (
               <article key={player.id} className={`mb-2 rounded-xl border p-4 ${status === 'week_off' ? 'opacity-45' : ''}`} style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: primaryColour }}>{initials(player.full_name)}</span>
-                    <p className="font-medium">{player.full_name}</p>
+                    <div>
+                      <p className="font-medium">{player.full_name}</p>
+                      {restricted ? <p className="text-xs text-white/35">Player restricted by club admin</p> : null}
+                    </div>
                   </div>
                   <select value={status} onChange={(event) => overrideStatus(player.id, event.target.value as SessionDetailResponse['status'])} className="rounded-full border border-white/10 bg-[#0d1117] px-3 py-2 text-xs" style={{ color: statusColour(status) }}>
                     <option value="available">Available</option>
@@ -199,7 +230,7 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-xl" style={{ backgroundColor: 'rgba(8,10,15,0.95)', borderColor: 'rgba(255,255,255,0.06)' }}>
         <div className="mx-auto flex max-w-[480px] items-center gap-2">
           {!pollSent ? (
-            <button type="button" onClick={sendPoll} className="w-full rounded-full px-6 py-3 font-semibold text-white" style={{ backgroundColor: primaryColour }}>Send Availability Poll →</button>
+            <button type="button" onClick={sendPoll} className="w-full rounded-full px-6 py-3 font-semibold text-white" style={{ backgroundColor: primaryColour }}>Send Availability Poll</button>
           ) : (
             <>
               <span className="flex-1 text-xs text-white/40">Poll sent {pollSentAt ? formatDate(pollSentAt) : ''}</span>
@@ -213,7 +244,7 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
       {shareMessage ? (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
           <section className="fixed inset-x-0 bottom-0 rounded-t-[20px] p-5" style={{ backgroundColor: 'rgba(8,10,15,0.98)' }}>
-            <button type="button" onClick={() => setShareMessage('')} className="absolute right-5 top-4 text-2xl text-white/45">×</button>
+            <button type="button" onClick={() => setShareMessage('')} className="absolute right-5 top-4 text-2xl text-white/45">x</button>
             <h2 className="text-xl font-bold">Share poll</h2>
             <pre className="mt-4 max-h-[320px] overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-4 whitespace-pre-wrap text-xs text-white/70">{shareMessage}</pre>
             <button type="button" onClick={copyMessage} className="mt-4 w-full rounded-full px-6 py-3 font-semibold text-white" style={{ backgroundColor: primaryColour }}>Copy Full Message</button>

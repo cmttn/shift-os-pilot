@@ -33,6 +33,12 @@ export interface CoachDashboardData {
     opponent: string | null;
     session_date: string;
     location: string | null;
+    opposition_contact_name: string | null;
+    opposition_contact_phone: string | null;
+    full_address: string | null;
+    postcode: string | null;
+    coach_notes: string | null;
+    tournify_link: string | null;
     is_home: boolean;
     poll_sent: boolean;
     available_count: number;
@@ -85,6 +91,12 @@ interface RawSession {
   opponent: string | null;
   session_date: string;
   location: string | null;
+  opposition_contact_name: string | null;
+  opposition_contact_phone: string | null;
+  full_address: string | null;
+  postcode: string | null;
+  coach_notes: string | null;
+  tournify_link: string | null;
   is_home: boolean | null;
   poll_sent: boolean | null;
 }
@@ -147,7 +159,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       .order('first_name', { ascending: true }),
     supabase
       .from('sessions')
-      .select('id,team_id,type,title,opponent,session_date,location,is_home,poll_sent')
+      .select('id,team_id,type,title,opponent,session_date,location,opposition_contact_name,opposition_contact_phone,full_address,postcode,coach_notes,tournify_link,is_home,poll_sent')
       .in('team_id', teamIds)
       .eq('is_active', true)
       .gte('session_date', new Date().toISOString())
@@ -203,6 +215,12 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       opponent: item.opponent,
       session_date: item.session_date,
       location: item.location,
+      opposition_contact_name: item.opposition_contact_name,
+      opposition_contact_phone: item.opposition_contact_phone,
+      full_address: item.full_address,
+      postcode: item.postcode,
+      coach_notes: item.coach_notes,
+      tournify_link: item.tournify_link,
       is_home: item.is_home ?? true,
       poll_sent: item.poll_sent ?? false,
       available_count: responses.filter((response) => response.status === 'available').length,
