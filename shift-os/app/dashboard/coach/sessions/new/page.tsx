@@ -1,0 +1,20 @@
+import { redirect } from 'next/navigation';
+import CreateSessionForm from '@/components/dashboard/CreateSessionForm';
+import { getCoachData } from '@/lib/dashboard/getCoachData';
+
+export default async function NewSessionPage() {
+  const coachData = await getCoachData();
+  if (!coachData) redirect('/dashboard/coach/welcome');
+
+  return (
+    <main className="min-h-screen px-5 pb-[84px] pt-8 text-white" style={{ backgroundColor: '#080a0f' }}>
+      <div className="mx-auto max-w-[480px]">
+        <h1 className="text-3xl font-black tracking-tight">Add Session</h1>
+        <p className="mt-2 text-sm text-white/40">Create a match, training session or tournament.</p>
+        <section className="mt-6 rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <CreateSessionForm coachData={coachData} />
+        </section>
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,235 @@
+import { createClient } from '@/lib/supabase/server';
+
+export interface CoachDashboardData {
+  coach: { id: string; full_name: string; email: string };
+  teams: Array<{
+    id: string;
+    name: string;
+    age_group: string | null;
+    gender: string | null;
+    join_code: string | null;
+    club_id: string | null;
+    club_name: string | null;
+    club_primary_colour: string | null;
+    club_badge_url: string | null;
+    plan_tier: string;
+    is_club_managed: boolean;
+  }>;
+  activeTeamId: string;
+  players: Array<{
+    id: string;
+    team_id: string | null;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    dob: string | null;
+    is_active: boolean;
+  }>;
+  upcomingSessions: Array<{
+    id: string;
+    team_id: string;
+    type: string;
+    title: string | null;
+    opponent: string | null;
+    session_date: string;
+    location: string | null;
+    is_home: boolean;
+    poll_sent: boolean;
+    available_count: number;
+    unavailable_count: number;
+    pending_count: number;
+    week_off_count: number;
+  }>;
+  enabledFeatures: string[];
+  isClubManaged: boolean;
+}
+
+interface TeamCoachRow {
+  team_id: string;
+}
+
+interface RawCoachTeam {
+  id: string;
+  name: string;
+  age_group: string | null;
+  gender: string | null;
+  join_code: string | null;
+  club_id: string | null;
+  clubs?: {
+    name: string | null;
+    primary_colour: string | null;
+    badge_url: string | null;
+    plan_tier: string | null;
+  } | Array<{
+    name: string | null;
+    primary_colour: string | null;
+    badge_url: string | null;
+    plan_tier: string | null;
+  }> | null;
+}
+
+interface RawPlayer {
+  id: string;
+  team_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  dob: string | null;
+  is_active: boolean | null;
+}
+
+interface RawSession {
+  id: string;
+  team_id: string;
+  type: string;
+  title: string | null;
+  opponent: string | null;
+  session_date: string;
+  location: string | null;
+  is_home: boolean | null;
+  poll_sent: boolean | null;
+}
+
+interface PollResponseCount {
+  session_id: string;
+  status: string | null;
+}
+
+function getFirstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+function splitName(player: RawPlayer): { firstName: string; lastName: string; fullName: string } {
+  const firstName = player.first_name?.trim() || 'Player';
+  const lastName = player.last_name?.trim() || '';
+  const fullName = [firstName, lastName].filter(Boolean).join(' ');
+  return { firstName, lastName, fullName };
+}
+
+export async function getCoachData(): Promise<CoachDashboardData | null> {
+  const supabase = await createClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session;
+  if (!session) return null;
+
+  const [profileRes, assignmentsRes] = await Promise.all([
+    supabase.from('users_profile').select('full_name').eq('id', session.user.id).maybeSingle<{ full_name: string | null }>(),
+    supabase.from('team_coaches').select('team_id').eq('user_id', session.user.id)
+  ]);
+
+  const assignments = (assignmentsRes.data ?? []) as TeamCoachRow[];
+  const teamIds = assignments.map((assignment) => assignment.team_id);
+  const fullName = profileRes.data?.full_name?.trim() || String(session.user.user_metadata.full_name ?? '').trim() || 'Coach';
+
+  if (teamIds.length === 0) {
+    return {
+      coach: { id: session.user.id, full_name: fullName, email: session.user.email ?? '' },
+      teams: [],
+      activeTeamId: '',
+      players: [],
+      upcomingSessions: [],
+      enabledFeatures: ['game_time_tracker', 'availability_manager', 'announcement_builder'],
+      isClubManaged: false
+    };
+  }
+
+  const [teamsRes, playersRes, sessionsRes] = await Promise.all([
+    supabase
+      .from('teams')
+      .select('id,name,age_group,gender,join_code,club_id,clubs(name,primary_colour,badge_url,plan_tier)')
+      .in('id', teamIds)
+      .eq('is_active', true)
+      .order('name', { ascending: true }),
+    supabase
+      .from('players')
+      .select('id,team_id,first_name,last_name,dob,is_active')
+      .in('team_id', teamIds)
+      .order('first_name', { ascending: true }),
+    supabase
+      .from('sessions')
+      .select('id,team_id,type,title,opponent,session_date,location,is_home,poll_sent')
+      .in('team_id', teamIds)
+      .eq('is_active', true)
+      .gte('session_date', new Date().toISOString())
+      .order('session_date', { ascending: true })
+  ]);
+
+  const rawTeams = (teamsRes.data ?? []) as RawCoachTeam[];
+  const teams = rawTeams.map((team) => {
+    const club = getFirstRelation(team.clubs);
+    return {
+      id: team.id,
+      name: team.name,
+      age_group: team.age_group,
+      gender: team.gender,
+      join_code: team.join_code,
+      club_id: team.club_id,
+      club_name: club?.name ?? null,
+      club_primary_colour: club?.primary_colour ?? null,
+      club_badge_url: club?.badge_url ?? null,
+      plan_tier: club?.plan_tier ?? 'free',
+      is_club_managed: Boolean(team.club_id)
+    };
+  });
+
+  const players = ((playersRes.data ?? []) as RawPlayer[]).map((player) => {
+    const names = splitName(player);
+    return {
+      id: player.id,
+      team_id: player.team_id,
+      first_name: names.firstName,
+      last_name: names.lastName,
+      full_name: names.fullName,
+      dob: player.dob ?? null,
+      is_active: player.is_active ?? true
+    };
+  });
+
+  const rawSessions = (sessionsRes.data ?? []) as RawSession[];
+  const sessionIds = rawSessions.map((item) => item.id);
+  const { data: responseCountsData } =
+    sessionIds.length > 0
+      ? await supabase.from('poll_responses').select('session_id,status').in('session_id', sessionIds)
+      : { data: [] as PollResponseCount[] };
+  const responseCounts = (responseCountsData ?? []) as PollResponseCount[];
+
+  const upcomingSessions = rawSessions.map((item) => {
+    const responses = responseCounts.filter((response) => response.session_id === item.id);
+    return {
+      id: item.id,
+      team_id: item.team_id,
+      type: item.type,
+      title: item.title,
+      opponent: item.opponent,
+      session_date: item.session_date,
+      location: item.location,
+      is_home: item.is_home ?? true,
+      poll_sent: item.poll_sent ?? false,
+      available_count: responses.filter((response) => response.status === 'available').length,
+      unavailable_count: responses.filter((response) => response.status === 'unavailable').length,
+      pending_count: responses.filter((response) => response.status === 'pending').length,
+      week_off_count: responses.filter((response) => response.status === 'week_off').length
+    };
+  });
+
+  const activeTeam = teams[0];
+  const isClubManaged = activeTeam?.is_club_managed ?? false;
+  const managedClubId = activeTeam?.club_id ?? null;
+  const { data: featuresData } =
+    managedClubId
+      ? await supabase.from('feature_toggles').select('feature_key,is_enabled').eq('club_id', managedClubId).eq('is_enabled', true)
+      : { data: [] as Array<{ feature_key: string | null; is_enabled: boolean | null }> };
+  const enabledFeatures = isClubManaged
+    ? (featuresData ?? []).map((feature) => feature.feature_key).filter((feature): feature is string => Boolean(feature))
+    : ['game_time_tracker', 'availability_manager', 'announcement_builder', 'fair_play_reports', 'structured_conversations', 'parent_engagement'];
+
+  return {
+    coach: { id: session.user.id, full_name: fullName, email: session.user.email ?? '' },
+    teams,
+    activeTeamId: activeTeam?.id ?? '',
+    players,
+    upcomingSessions,
+    enabledFeatures,
+    isClubManaged
+  };
+}

@@ -67,6 +67,7 @@ export async function middleware(request: NextRequest) {
     if (!membership) {
       const url = request.nextUrl.clone();
       if (intendedRole === 'coach' && !inviteToken) url.pathname = '/dashboard/coach/welcome';
+      else if (intendedRole === 'club_admin') url.pathname = '/onboarding';
       else if (intendedRole === 'player') url.pathname = '/dashboard/player/welcome';
       else url.pathname = '/onboarding';
       if (pathname !== url.pathname) return NextResponse.redirect(url);
@@ -74,8 +75,8 @@ export async function middleware(request: NextRequest) {
     }
 
     const role = membership.club_role;
-    if (role === 'admin' || role === 'club_admin' || role === 'shift_admin') {
-      if (pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/club') && pathname !== '/dashboard') {
+    if (role === 'admin') {
+      if (pathname === '/dashboard' || (pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/club'))) {
         const url = request.nextUrl.clone();
         url.pathname = '/dashboard/club';
         return NextResponse.redirect(url);
@@ -83,18 +84,16 @@ export async function middleware(request: NextRequest) {
     }
 
     if (role === 'coach') {
-      const { count } = await supabase.from('team_coaches').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id);
-      const target = (count ?? 0) > 0 ? '/dashboard/coach' : '/dashboard/coach/welcome';
-      if (pathname === '/dashboard' || (pathname.startsWith('/dashboard') && !pathname.startsWith(target) && !pathname.startsWith('/dashboard/coach/teams/new'))) {
+      if (pathname === '/dashboard' || pathname.startsWith('/dashboard/club')) {
         const url = request.nextUrl.clone();
-        url.pathname = target;
+        url.pathname = '/dashboard/coach';
         return NextResponse.redirect(url);
       }
     }
 
     if (role === 'parent' && (pathname === '/dashboard' || pathname.startsWith('/dashboard/club') || pathname.startsWith('/dashboard/coach'))) {
       const url = request.nextUrl.clone();
-      url.pathname = '/dashboard/parent/player';
+      url.pathname = '/dashboard/parent';
       return NextResponse.redirect(url);
     }
 

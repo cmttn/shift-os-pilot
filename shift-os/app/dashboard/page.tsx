@@ -19,8 +19,7 @@ export default async function DashboardPage() {
     .maybeSingle();
 
   if (membership?.club_role === 'coach') {
-    const { count } = await supabase.from('team_coaches').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id);
-    redirect((count ?? 0) > 0 ? '/dashboard/coach' : '/dashboard/coach/welcome');
+    redirect('/dashboard/coach');
   }
 
   const email = session.user.email?.toLowerCase();
@@ -33,7 +32,7 @@ export default async function DashboardPage() {
     : { count: 0 };
 
   if (membership?.club_role === 'parent' || (linkedPlayerCount ?? 0) > 0) {
-    redirect('/dashboard/parent/player');
+    redirect('/dashboard/parent');
   }
 
   if (membership?.club_role === 'player') {

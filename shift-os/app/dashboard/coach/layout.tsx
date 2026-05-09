@@ -1,10 +1,9 @@
+import { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import CoachDashboardClient from '@/components/dashboard/CoachDashboardClient';
 import { getCoachData } from '@/lib/dashboard/getCoachData';
 
-export default async function CoachDashboardPage() {
+export default async function CoachLayout({ children }: { children: ReactNode }) {
   const coachData = await getCoachData();
   if (!coachData) redirect('/dashboard/coach/welcome');
-
-  return <CoachDashboardClient data={coachData} />;
+  return <>{children}</>;
 }
