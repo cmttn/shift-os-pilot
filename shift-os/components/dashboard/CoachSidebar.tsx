@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 
 interface CoachSidebarProps {
@@ -19,6 +22,7 @@ function initials(name: string): string {
 }
 
 export default function CoachSidebar({ data }: CoachSidebarProps) {
+  const pathname = usePathname();
   const team = data.teams[0] ?? null;
   const primaryColour = team?.club_primary_colour ?? '#00C851';
   return (
@@ -30,12 +34,15 @@ export default function CoachSidebar({ data }: CoachSidebarProps) {
         {team?.is_club_managed ? <p className="mt-3 text-xs text-white/35">{team.club_name}</p> : null}
       </div>
       <nav className="flex-1 px-3">
-        {navItems.map(([label, href], index) => (
-          <Link key={href} href={href} className="mb-1 flex items-center gap-3 rounded-[10px] px-4 py-3 text-sm text-white/45 transition-all duration-300 ease-out hover:translate-x-1 hover:bg-white/[0.04] hover:text-white" style={index === 0 ? { backgroundColor: `${primaryColour}1f`, borderLeft: `2px solid ${primaryColour}`, color: '#ffffff' } : undefined}>
-            <span className="flex h-[18px] w-[18px] items-center justify-center text-xs font-black" style={{ color: index === 0 ? primaryColour : 'rgba(255,255,255,0.35)' }}>{label[0]}</span>
-            {label}
-          </Link>
-        ))}
+        {navItems.map(([label, href]) => {
+          const isActive = href === '/dashboard/coach' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+          return (
+            <Link key={href} href={href} className="mb-1 flex items-center gap-3 rounded-[10px] px-4 py-3 text-sm text-white/45 transition-all duration-300 ease-out hover:translate-x-1 hover:bg-white/[0.04] hover:text-white" style={isActive ? { backgroundColor: `${primaryColour}1f`, borderLeft: `2px solid ${primaryColour}`, color: '#ffffff' } : undefined}>
+              <span className="flex h-[18px] w-[18px] items-center justify-center text-xs font-black" style={{ color: isActive ? primaryColour : 'rgba(255,255,255,0.35)' }}>{label[0]}</span>
+              {label}
+            </Link>
+          );
+        })}
       </nav>
       <div className="p-7">
         <div className="flex items-center gap-3">

@@ -160,7 +160,7 @@ export default function Sidebar({ club }: SidebarProps) {
 
         <nav className="space-y-1 px-3">
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active = item.href === '/dashboard/club' ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}

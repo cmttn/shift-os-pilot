@@ -153,6 +153,13 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
   const players = (playersRes.data ?? []) as PlayerSummaryRecord[];
   const sessions = (sessionsRes.data ?? []) as SessionRecord[];
   const coachIds = Array.from(new Set(leadCoaches.map((coach) => coach.user_id)));
+  console.log('getClubData raw counts', {
+    club_id: club.id,
+    teams: rawTeams.length,
+    players: players.length,
+    distinct_coaches: coachIds.length,
+    upcoming_sessions: sessions.length
+  });
   const { data: coachProfilesData } =
     coachIds.length > 0
       ? await supabase.from('users_profile').select('id,full_name').in('id', coachIds)
