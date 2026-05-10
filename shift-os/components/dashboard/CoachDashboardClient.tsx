@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import BottomNav from '@/components/mobile/BottomNav';
+import { createClient } from '@/lib/supabase/client';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 
 const tools = [
@@ -16,6 +17,28 @@ const tools = [
 
 interface CoachDashboardClientProps {
   data: CoachDashboardData;
+}
+
+interface RecentPotm {
+  playerName: string;
+  opponent: string;
+  date: string;
+}
+
+interface PotmStatRow {
+  player_id: string;
+  last_won_at: string | null;
+  last_session_id: string | null;
+}
+
+interface PlayerNameRow {
+  first_name: string | null;
+  last_name: string | null;
+}
+
+interface SessionOpponentRow {
+  opponent: string | null;
+  title: string | null;
 }
 
 function getContrastText(hexColour: string): string {
@@ -63,6 +86,7 @@ function formatCompactSessionDate(value: string): string {
 
 export default function CoachDashboardClient({ data }: CoachDashboardClientProps) {
   const [activeTeamId, setActiveTeamId] = useState(data.activeTeamId);
+  const [recentPotm, setRecentPotm] = useState<RecentPotm | null>(null);
   const activeTeam = data.teams.find((team) => team.id === activeTeamId) ?? data.teams[0] ?? null;
   const primaryColour = activeTeam?.club_primary_colour ?? '#00C851';
   const contrastText = getContrastText(primaryColour);
@@ -76,6 +100,37 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
     training: teamSessions.filter((session) => session.type === 'training'),
     tournament: teamSessions.filter((session) => session.type === 'tournament')
   }), [teamSessions]);
+
+  useEffect(() => {
+    async function loadRecentPotm() {
+      if (!activeTeam?.id) {
+        setRecentPotm(null);
+        return;
+      }
+      const since = new Date(Date.now() - 7 * 86400000).toISOString();
+      const supabase = createClient();
+      const { data: stat } = await supabase
+        .from('potm_stats')
+        .select('player_id,last_won_at,last_session_id')
+        .eq('team_id', activeTeam.id)
+        .gte('last_won_at', since)
+        .order('last_won_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<PotmStatRow>();
+      if (!stat) {
+        setRecentPotm(null);
+        return;
+      }
+      const [{ data: player }, { data: session }] = await Promise.all([
+        supabase.from('players').select('first_name,last_name').eq('id', stat.player_id).maybeSingle<PlayerNameRow>(),
+        stat.last_session_id ? supabase.from('sessions').select('opponent,title').eq('id', stat.last_session_id).maybeSingle<SessionOpponentRow>() : Promise.resolve({ data: null })
+      ]);
+      const playerName = [player?.first_name, player?.last_name].map((part) => part?.trim()).filter(Boolean).join(' ') || 'Player';
+      const opponent = session?.opponent ?? session?.title ?? 'Match';
+      setRecentPotm({ playerName, opponent, date: stat.last_won_at ? formatDate(stat.last_won_at) : '' });
+    }
+    void loadRecentPotm();
+  }, [activeTeam?.id]);
 
   return (
     <main className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
@@ -93,6 +148,12 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
 
         <div className="px-5 pt-20 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)] md:gap-6 md:px-0 md:pt-8">
           <div>
+          {recentPotm ? (
+            <div className="mb-4 flex h-11 items-center rounded-xl border px-4 text-sm text-white" style={{ backgroundColor: `${primaryColour}1a`, borderColor: `${primaryColour}33` }}>
+              <span className="mr-2" style={{ color: primaryColour }}>🏆</span>
+              <span className="truncate">Last POTM: {recentPotm.playerName} vs {recentPotm.opponent} · {recentPotm.date}</span>
+            </div>
+          ) : null}
           {nextFixture ? (
             <Link href={`/dashboard/coach/sessions/${nextFixture.id}`} className="mb-8 block max-h-[180px] overflow-hidden rounded-2xl p-4 text-white shadow-2xl transition-all duration-300 ease-out hover:-translate-y-0.5 md:max-h-none md:p-5" style={{ background: `linear-gradient(135deg, ${primaryColour} 0%, #06100a 100%)` }}>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">Next {nextFixture.type}</p>

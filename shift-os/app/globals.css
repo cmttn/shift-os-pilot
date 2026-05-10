@@ -27,3 +27,12 @@ body {
 .drawer-enter {
   animation: slideUp 300ms ease-out;
 }
+
+@keyframes ticker {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}

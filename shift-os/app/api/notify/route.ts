@@ -7,6 +7,7 @@ interface NotifyPayload {
   team_id: string;
   message: string;
   title: string;
+  audience?: 'coaches' | 'team';
 }
 
 interface TeamCoachRow {
@@ -19,10 +20,19 @@ interface PushSubscriptionRow {
   auth: string;
 }
 
+interface ParentUserRow {
+  parent_user_id: string | null;
+}
+
 function isNotifyPayload(value: unknown): value is NotifyPayload {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
-  return typeof record.session_id === 'string' && typeof record.team_id === 'string' && typeof record.message === 'string' && typeof record.title === 'string';
+  const audience = record.audience;
+  return typeof record.session_id === 'string'
+    && typeof record.team_id === 'string'
+    && typeof record.message === 'string'
+    && typeof record.title === 'string'
+    && (audience === undefined || audience === 'coaches' || audience === 'team');
 }
 
 export async function POST(request: Request) {
@@ -42,9 +52,14 @@ export async function POST(request: Request) {
   const supabase = createServiceClient();
   const { data: coachesData } = await supabase.from('team_coaches').select('user_id').eq('team_id', payload.team_id);
   const coachIds = ((coachesData ?? []) as TeamCoachRow[]).map((coach) => coach.user_id);
+  const { data: parentData } = payload.audience === 'team'
+    ? await supabase.from('players').select('parent_user_id').eq('team_id', payload.team_id).eq('is_active', true)
+    : { data: [] as ParentUserRow[] };
+  const parentIds = ((parentData ?? []) as ParentUserRow[]).map((parent) => parent.parent_user_id).filter((id): id is string => Boolean(id));
+  const targetIds = Array.from(new Set(payload.audience === 'team' ? [...coachIds, ...parentIds] : coachIds));
   const { data: subscriptionsData } =
-    coachIds.length > 0
-      ? await supabase.from('push_subscriptions').select('endpoint,p256dh,auth').in('user_id', coachIds)
+    targetIds.length > 0
+      ? await supabase.from('push_subscriptions').select('endpoint,p256dh,auth').in('user_id', targetIds)
       : { data: [] as PushSubscriptionRow[] };
 
   const subscriptions = (subscriptionsData ?? []) as PushSubscriptionRow[];

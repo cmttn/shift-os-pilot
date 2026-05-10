@@ -184,6 +184,7 @@ _Powered by Shift OS_`;
           <div className="mt-4 flex flex-wrap gap-2">
             {data.session.tournify_link ? <a href={data.session.tournify_link} target="_blank" rel="noreferrer" className="inline-block rounded-full border border-white/10 px-4 py-2 text-sm text-white">View Bracket</a> : null}
             <Link href={`/dashboard/coach/sessions/${data.session.id}/playtime`} className="inline-block rounded-full px-4 py-2 text-sm font-semibold text-black" style={{ backgroundColor: primaryColour }}>Playtime</Link>
+            {data.session.type === 'match' ? <Link href={`/dashboard/coach/sessions/${data.session.id}/potm`} className="inline-block rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-200">POTM</Link> : null}
           </div>
         </section>
 
