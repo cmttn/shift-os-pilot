@@ -23,13 +23,12 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
 
   const singleContext = data.players.length === 1 && player.teams.length === 1;
   const heroSession = team.upcoming_sessions[0] ?? null;
-  console.log('[parent-team-dashboard] sessions', team.upcoming_sessions);
 
   return (
-    <main className="min-h-screen px-5 pb-24 pt-5 text-white" style={{ backgroundColor: '#080a0f' }}>
-      <div className="mx-auto max-w-[480px]">
+    <main className="min-h-screen px-5 pb-24 pt-5 text-white md:pt-8" style={{ backgroundColor: '#080a0f' }}>
+      <div className="mx-auto max-w-[480px] md:max-w-[680px]">
         <header className="flex items-center gap-3">
-          {!singleContext ? <Link href={player.teams.length > 1 ? `/dashboard/parent/player/${player.id}` : '/dashboard/parent'} className="text-sm text-white/45 transition-all duration-300 ease-out hover:text-white">← Back</Link> : null}
+          <Link href={player.teams.length > 1 ? `/dashboard/parent/player/${player.id}` : '/dashboard/parent'} className="text-sm text-white/45 transition-all duration-300 ease-out hover:text-white">← Back</Link>
           <div className="ml-auto flex items-center gap-3">
             {team.club_badge_url ? <img src={team.club_badge_url} alt="" className="h-10 w-10 rounded-full object-cover" /> : <span className="h-10 w-10 rounded-full" style={{ backgroundColor: team.club_primary_colour }} />}
             <span className="text-right">
@@ -41,7 +40,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
 
         <section className="mt-8">
           <p className="text-xs uppercase tracking-[0.24em] text-white/30">Parent / Player</p>
-          <h1 className="mt-2 text-3xl font-black text-white">{player.full_name}</h1>
+          <h1 className="mt-2 text-3xl font-black text-white md:text-4xl">{player.full_name}</h1>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full px-3 py-1 text-xs font-semibold text-black" style={{ backgroundColor: team.club_primary_colour }}>{team.age_group ?? 'Age TBC'}</span>
             <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{team.gender ?? 'Mixed'}</span>

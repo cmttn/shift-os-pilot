@@ -11,6 +11,8 @@ export interface ParentSession {
   location: string | null;
   full_address: string | null;
   postcode: string | null;
+  opposition_contact_name: string | null;
+  opposition_contact_phone: string | null;
   coach_notes: string | null;
   tournify_link: string | null;
   poll_sent: boolean;
@@ -47,6 +49,7 @@ export interface ParentPlayer {
 export interface ParentDashboardData {
   userId: string;
   firstName: string;
+  parentFirstName: string;
   email: string;
   players: ParentPlayer[];
   allSameClub: boolean;
@@ -94,6 +97,8 @@ interface RawSession {
   location: string | null;
   full_address: string | null;
   postcode: string | null;
+  opposition_contact_name: string | null;
+  opposition_contact_phone: string | null;
   coach_notes: string | null;
   tournify_link: string | null;
   poll_sent: boolean | null;
@@ -144,6 +149,8 @@ function buildSession(session: RawSession, responses: RawPollResponse[], playerI
     location: session.location,
     full_address: session.full_address,
     postcode: session.postcode,
+    opposition_contact_name: session.opposition_contact_name,
+    opposition_contact_phone: session.opposition_contact_phone,
     coach_notes: session.coach_notes,
     tournify_link: session.tournify_link,
     poll_sent: Boolean(session.poll_sent),
@@ -160,13 +167,16 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
   const session = sessionData.session;
   if (!session) return null;
 
+  const userId = session.user.id;
   const [profileRes, playersRes] = await Promise.all([
-    supabase.from('users_profile').select('full_name').eq('id', session.user.id).maybeSingle(),
+    supabase.from('users_profile').select('full_name').eq('id', userId).single(),
     supabase.from('players').select('id,team_id,first_name,last_name,dob,is_active').eq('parent_user_id', session.user.id).eq('is_active', true).order('first_name', { ascending: true })
   ]);
 
   const playerRows = (playersRes.data ?? []) as RawPlayer[];
-  if (playerRows.length === 0) return null;
+  const profile = profileRes.data as RawProfile | null;
+  const profileName = profile?.full_name?.trim() ?? '';
+  const parentFirstName = profileName.length > 0 ? profileName.split(' ')[0] : session.user.email?.split('@')[0] ?? 'there';
 
   const teamIds = Array.from(new Set(playerRows.map((player) => player.team_id).filter((teamId): teamId is string => Boolean(teamId))));
   const { data: teamRowsData } = teamIds.length > 0
@@ -213,10 +223,6 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
 
   const clubRows = (clubRowsData ?? []) as RawClub[];
   const responseRows = responseResults.flat();
-  const profile = profileRes.data as RawProfile | null;
-  const profileName = profile?.full_name?.trim() ?? '';
-  const firstName = profileName.length > 0 ? profileName.split(' ')[0] : session.user.email?.split('@')[0] ?? 'there';
-
   const players = playerRows.map((player): ParentPlayer => {
     const playerTeamRows = teamRows.filter((team) => team.id === player.team_id);
     return {
@@ -252,8 +258,9 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
   const firstTeam = players.flatMap((player) => player.teams)[0] ?? null;
 
   return {
-    userId: session.user.id,
-    firstName,
+    userId,
+    firstName: parentFirstName,
+    parentFirstName,
     email: session.user.email ?? '',
     players,
     allSameClub,
