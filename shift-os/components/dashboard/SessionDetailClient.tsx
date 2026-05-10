@@ -181,7 +181,10 @@ _Powered by Shift OS_`;
           <p className="mt-2 text-sm text-white/40">{formatDate(data.session.session_date)}</p>
           <p className="mt-1 text-sm text-white/40">{data.session.full_address || data.session.location || 'Location TBC'}{data.session.postcode ? `, ${data.session.postcode}` : ''}</p>
           {data.session.opposition_contact_name || data.session.opposition_contact_phone ? <p className="mt-1 text-sm text-white/40">Contact: {[data.session.opposition_contact_name, data.session.opposition_contact_phone].filter(Boolean).join(' - ')}</p> : null}
-          {data.session.tournify_link ? <a href={data.session.tournify_link} target="_blank" rel="noreferrer" className="mt-4 inline-block rounded-full border border-white/10 px-4 py-2 text-sm text-white">View Bracket</a> : null}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {data.session.tournify_link ? <a href={data.session.tournify_link} target="_blank" rel="noreferrer" className="inline-block rounded-full border border-white/10 px-4 py-2 text-sm text-white">View Bracket</a> : null}
+            <Link href={`/dashboard/coach/sessions/${data.session.id}/playtime`} className="inline-block rounded-full px-4 py-2 text-sm font-semibold text-black" style={{ backgroundColor: primaryColour }}>Playtime</Link>
+          </div>
         </section>
 
         <section className="mt-5 rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>

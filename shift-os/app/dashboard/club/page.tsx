@@ -70,6 +70,24 @@ export default async function ClubDashboardHomePage() {
     expiring: coachCompliance.filter((status) => status === 'expiring').length,
     expired: coachCompliance.filter((status) => status === 'expired').length
   };
+  const [{ count: playtimeUsageCount }, { data: lastPlaytimeUsageData }] = await Promise.all([
+    supabase
+      .from('tool_usage')
+      .select('id', { count: 'exact', head: true })
+      .eq('club_id', clubData.club.id)
+      .eq('tool_name', 'playtime_calculator'),
+    supabase
+      .from('tool_usage')
+      .select('created_at')
+      .eq('club_id', clubData.club.id)
+      .eq('tool_name', 'playtime_calculator')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{ created_at: string | null }>()
+  ]);
+  const lastPlaytimeUsed = lastPlaytimeUsageData?.created_at
+    ? new Date(lastPlaytimeUsageData.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    : 'Not used yet';
 
   return (
     <div className="-mx-4 -my-4 min-h-screen px-4 pb-16 pt-10 md:-mx-8 md:-my-8 md:px-8" style={{ background: `radial-gradient(ellipse at top, ${primaryColour}10 0%, transparent 50%), #080a0f` }}>
@@ -111,6 +129,17 @@ export default async function ClubDashboardHomePage() {
           </div>
         </div>
       </Link>
+
+      <section className="mt-4 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/30">Tools</p>
+            <h3 className="mt-2 text-2xl font-bold text-white">Playtime Calculator</h3>
+            <p className="mt-1 text-sm text-white/35">Used {playtimeUsageCount ?? 0} times this season</p>
+          </div>
+          <span className="rounded-full border px-4 py-2 text-sm text-white/50" style={{ borderColor: `${primaryColour}33`, backgroundColor: `${primaryColour}14` }}>Last used {lastPlaytimeUsed}</span>
+        </div>
+      </section>
 
       <section className="mt-12">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
