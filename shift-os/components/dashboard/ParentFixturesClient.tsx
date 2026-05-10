@@ -17,6 +17,12 @@ function formatDay(value: string): string {
   return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+function formatLongDay(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return value;
+  return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 function formatTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return '';
@@ -38,9 +44,21 @@ function statusLabel(status: ParentAvailabilityStatus): string {
 
 function statusStyles(status: ParentAvailabilityStatus): { label: string; colour: string; icon: string } {
   if (status === 'available') return { label: 'Available', colour: '#10b981', icon: '✓' };
-  if (status === 'unavailable') return { label: 'Not Available', colour: '#ef4444', icon: '×' };
+  if (status === 'unavailable') return { label: 'Not Available', colour: '#ef4444', icon: '✕' };
   if (status === 'week_off') return { label: 'Week Off', colour: 'rgba(255,255,255,0.25)', icon: '○' };
-  return { label: 'Confirm', colour: '#f59e0b', icon: '' };
+  return { label: 'Pending', colour: '#f59e0b', icon: '⏳' };
+}
+
+function typeLabel(type: string): string {
+  if (type === 'match') return 'Next Match';
+  if (type === 'tournament') return 'Next Tournament';
+  return 'Next Training';
+}
+
+function typeIcon(type: string): string {
+  if (type === 'match') return '⚽';
+  if (type === 'tournament') return '🏆';
+  return '🏃';
 }
 
 function displayAddress(session: ParentSession): string {
@@ -52,10 +70,14 @@ function displayAddress(session: ParentSession): string {
   return session.location ?? 'TBC';
 }
 
+function nextToggleStatus(status: ParentAvailabilityStatus): 'available' | 'unavailable' {
+  return status === 'available' ? 'unavailable' : 'available';
+}
+
 export default function ParentFixturesClient({ playerId, playerName, team, heroSessionId }: ParentFixturesClientProps) {
   const [sessions, setSessions] = useState<ParentSession[]>(team.upcoming_sessions);
   const heroSession = useMemo(() => sessions.find((session) => session.id === heroSessionId) ?? sessions[0] ?? null, [heroSessionId, sessions]);
-  const visibleSessions = useMemo(() => sessions.filter((session) => session.id !== heroSessionId), [heroSessionId, sessions]);
+  const visibleSessions = useMemo(() => sessions.filter((session) => session.id !== heroSession?.id), [heroSession?.id, sessions]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -99,86 +121,140 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
     });
   }
 
-  return (
-    <>
-      {heroSession ? (
-        <section className="relative mt-8 overflow-hidden rounded-2xl p-5 md:p-6" style={{ background: `linear-gradient(135deg, ${team.club_primary_colour} 0%, #102015 52%, #080a0f 100%)` }}>
-          <div className="absolute inset-x-0 bottom-0 h-full" style={{ background: 'linear-gradient(to bottom, transparent 60%, #080a0f 100%)' }} />
-          <div className="relative md:grid md:grid-cols-[minmax(0,1.25fr)_minmax(220px,0.75fr)] md:gap-6">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/55">Next {heroSession.type}</p>
-              <h2 className="mt-3 text-2xl font-black text-white md:text-3xl">{sessionTitle(team.team_name, heroSession)}</h2>
-              <div className="mt-4 space-y-2 text-sm text-white/70 md:text-base">
-                <p><span className="text-xs uppercase tracking-wider text-white/40">Date:</span> <span className="text-white/80">{formatDay(heroSession.session_date)}</span></p>
-                <p><span className="text-xs uppercase tracking-wider text-white/40">Time:</span> <span className="text-white/80">KO {formatTime(heroSession.session_date)}</span></p>
-                <p><span className="text-xs uppercase tracking-wider text-white/40">Location:</span> <span className="text-white/80">{displayAddress(heroSession)}</span></p>
-                {heroSession.opposition_contact_name || heroSession.opposition_contact_phone ? <p className="hidden md:block">☎ {[heroSession.opposition_contact_name, heroSession.opposition_contact_phone].filter(Boolean).join(' - ')}</p> : null}
-                {heroSession.coach_notes ? <p><span className="text-xs uppercase tracking-wider text-white/40">Notes:</span> <span className="italic text-white/55">{heroSession.coach_notes}</span></p> : null}
-              </div>
-              {heroSession.tournify_link ? <a href={heroSession.tournify_link} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">🏆 View Tournament →</a> : null}
-            </div>
+  function renderHeroAvailability(session: ParentSession, desktop: boolean) {
+    if (session.my_availability === 'week_off') {
+      return (
+        <div className={`${desktop ? 'rounded-2xl p-6 text-lg' : 'rounded-full px-4 text-sm'} flex min-h-14 items-center justify-center bg-white/10 font-semibold text-white/60`}>
+          Week Off - set by coach
+        </div>
+      );
+    }
 
-            <div className="mt-6 md:mt-0 md:flex md:flex-col md:justify-center">
-              {heroSession.my_availability === 'week_off' ? (
-                <div className="flex min-h-14 items-center justify-center rounded-full bg-white/10 px-4 text-sm font-semibold text-white/65">Week Off - set by coach</div>
-              ) : heroSession.my_availability === 'available' || heroSession.my_availability === 'unavailable' ? (
-                <button
-                  type="button"
-                  onClick={() => updateAvailability(heroSession, heroSession.my_availability === 'available' ? 'unavailable' : 'available')}
-                  className="min-h-14 w-full rounded-full px-5 text-sm font-bold text-white transition-all duration-300 ease-out"
-                  style={{ backgroundColor: heroSession.my_availability === 'available' ? '#10b981' : '#ef4444' }}
-                >
-                  {heroSession.my_availability === 'available' ? "✓ You're Available" : '× Not Available'}
-                </button>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <button type="button" onClick={() => updateAvailability(heroSession, 'available')} className="min-h-14 rounded-full px-4 text-sm font-bold text-black transition-all duration-300 ease-out" style={{ backgroundColor: team.club_primary_colour }}>✓ Available</button>
-                  <button type="button" onClick={() => updateAvailability(heroSession, 'unavailable')} className="min-h-14 rounded-full bg-[#ef4444] px-4 text-sm font-bold text-white transition-all duration-300 ease-out">× Not Available</button>
-                </div>
-              )}
-            </div>
+    if (session.my_availability === 'available' || session.my_availability === 'unavailable') {
+      const isAvailable = session.my_availability === 'available';
+      return (
+        <button
+          type="button"
+          onClick={() => updateAvailability(session, isAvailable ? 'unavailable' : 'available')}
+          className={`${desktop ? 'rounded-2xl border p-6 text-left' : 'min-h-14 rounded-full px-5 text-sm'} w-full font-bold transition-all duration-300 ease-out hover:-translate-y-0.5`}
+          style={{
+            backgroundColor: isAvailable ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+            borderColor: isAvailable ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)',
+            color: isAvailable ? '#10b981' : '#ef4444'
+          }}
+        >
+          <span className={desktop ? 'block text-2xl' : ''}>{isAvailable ? "✓ You're Available" : '✕ Not Available'}</span>
+          {desktop ? <span className="mt-1 block text-sm font-normal text-white/35">Tap to change</span> : null}
+        </button>
+      );
+    }
+
+    return (
+      <div className={`${desktop ? 'grid-cols-1' : 'grid-cols-1'} grid gap-3`}>
+        <button type="button" onClick={() => updateAvailability(session, 'available')} className={`${desktop ? 'rounded-2xl py-5 text-lg' : 'rounded-full py-4 text-sm'} px-4 font-bold text-white transition-all duration-300 ease-out hover:scale-[1.01]`} style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>✓ Available</button>
+        <button type="button" onClick={() => updateAvailability(session, 'unavailable')} className={`${desktop ? 'rounded-2xl py-5 text-lg' : 'rounded-full py-4 text-sm'} px-4 font-bold text-white transition-all duration-300 ease-out hover:scale-[1.01]`} style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)' }}>✕ Not Available</button>
+      </div>
+    );
+  }
+
+  function renderHeroCard(session: ParentSession, desktop: boolean) {
+    return (
+      <section
+        className={`${desktop ? 'mt-6 min-h-[220px] p-6' : 'mt-8 p-5'} relative overflow-hidden rounded-2xl`}
+        style={{ background: `linear-gradient(135deg, ${team.club_primary_colour} 0%, #102015 52%, #080a0f 100%)` }}
+      >
+        <div className="absolute inset-x-0 bottom-0 h-full" style={{ background: 'linear-gradient(to bottom, transparent 50%, #080a0f 100%)' }} />
+        <div className="relative">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">{typeLabel(session.type)}</p>
+          <h2 className={`${desktop ? 'text-3xl' : 'text-2xl'} mt-2 font-black text-white`}>{sessionTitle(team.team_name, session)}</h2>
+          <div className={`${desktop ? 'mt-5' : 'mt-4'} space-y-3`}>
+            <p><span className="mr-2 text-xs uppercase tracking-wider text-white/35">Date:</span><span className="text-sm text-white/85">{desktop ? formatLongDay(session.session_date) : formatDay(session.session_date)}</span></p>
+            <p><span className="mr-2 text-xs uppercase tracking-wider text-white/35">Time:</span><span className="text-sm text-white/85">KO {formatTime(session.session_date)}</span></p>
+            <p><span className="mr-2 text-xs uppercase tracking-wider text-white/35">Location:</span><span className="text-sm text-white/85">{displayAddress(session)}</span></p>
+            {session.coach_notes ? <p><span className="mr-2 text-xs uppercase tracking-wider text-white/35">Notes:</span><span className="text-sm italic text-white/70">{session.coach_notes}</span></p> : null}
           </div>
-        </section>
-      ) : (
-        <section className="mt-8 rounded-2xl border border-white/[0.06] p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)' }}>
-          <h2 className="text-xl font-bold text-white">No sessions yet</h2>
-          <p className="mt-2 text-sm text-white/40">Your coach has not posted a fixture, training session or tournament yet.</p>
-        </section>
-      )}
+          {session.tournify_link ? <a href={session.tournify_link} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">View Tournament →</a> : null}
+        </div>
+      </section>
+    );
+  }
 
-      <section className="mt-8">
-        <h2 className="text-xl font-bold text-white md:text-2xl">Upcoming Schedule</h2>
-        <div className="mt-4 space-y-3 md:space-y-4">
+  function renderScheduleList(desktop: boolean) {
+    return (
+      <section className={desktop ? 'mt-8' : 'mt-8'}>
+        <h2 className={desktop ? 'text-xs font-bold uppercase tracking-[0.24em] text-white/35' : 'text-xl font-bold text-white'}>{desktop ? 'Upcoming Schedule' : 'Upcoming Schedule'}</h2>
+        <div className={desktop ? 'mt-4 space-y-3' : 'mt-4 space-y-3'}>
           {visibleSessions.length === 0 ? (
             <p className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 text-sm text-white/35">No other sessions are posted yet.</p>
           ) : visibleSessions.map((session) => {
             const status = statusStyles(session.my_availability);
             const accent = session.type === 'match' ? team.club_primary_colour : 'rgba(255,255,255,0.15)';
             return (
-              <article key={session.id} className="rounded-xl border p-4 md:p-5" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.06)', borderLeft: `3px solid ${accent}` }}>
+              <article key={session.id} className={`${desktop ? 'p-5' : 'p-4'} rounded-xl border`} style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)', borderLeft: `3px solid ${accent}` }}>
                 <div className="flex gap-3">
-                  <span className="mt-1 text-lg">{session.type === 'match' ? '⚽' : session.type === 'tournament' ? '🏆' : '🏃'}</span>
+                  <span className={`${desktop ? 'flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.04] text-base' : 'mt-1 text-lg'} shrink-0`}>{typeIcon(session.type)}</span>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-white md:text-lg">{sessionTitle(team.team_name, session)}</h3>
+                    <h3 className="font-semibold text-white">{sessionTitle(team.team_name, session)}</h3>
                     <p className="mt-1 text-sm text-white/40">{formatDay(session.session_date)} at {formatTime(session.session_date)}</p>
-                    <p className="mt-1 text-xs text-white/30 md:text-sm">{displayAddress(session)}</p>
-                    {session.opposition_contact_name || session.opposition_contact_phone ? <p className="mt-1 hidden text-xs text-white/30 md:block">Contact: {[session.opposition_contact_name, session.opposition_contact_phone].filter(Boolean).join(' - ')}</p> : null}
-                    {session.coach_notes ? <p className="mt-3 line-clamp-2 text-sm italic text-white/35">{session.coach_notes}</p> : null}
+                    <p className="mt-1 truncate text-xs text-white/30">{displayAddress(session)}</p>
+                    {session.coach_notes ? <p className="mt-2 line-clamp-2 text-xs italic text-white/35">{session.coach_notes}</p> : null}
+                    {desktop && (session.opposition_contact_name || session.opposition_contact_phone) ? <p className="mt-1 text-xs text-white/30">{[session.opposition_contact_name, session.opposition_contact_phone].filter(Boolean).join(' · ')}</p> : null}
                   </div>
                   <button
                     type="button"
                     disabled={session.my_availability === 'week_off'}
-                    onClick={() => updateAvailability(session, session.my_availability === 'available' ? 'unavailable' : 'available')}
-                    className="h-9 shrink-0 rounded-full px-3 text-xs font-semibold text-white transition-all duration-300 ease-out disabled:cursor-not-allowed"
+                    onClick={() => updateAvailability(session, nextToggleStatus(session.my_availability))}
+                    className="h-9 shrink-0 rounded-full px-3 text-xs font-semibold text-white transition-all duration-300 ease-out hover:-translate-y-0.5 disabled:cursor-not-allowed"
                     style={{ backgroundColor: status.colour }}
                   >
-                    {status.icon ? `${status.icon} ` : ''}{status.label}
+                    {status.icon} {status.label}
                   </button>
                 </div>
               </article>
             );
           })}
         </div>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="md:hidden">
+        {heroSession ? (
+          <>
+            {renderHeroCard(heroSession, false)}
+            <div className="mt-6">{renderHeroAvailability(heroSession, false)}</div>
+          </>
+        ) : (
+          <section className="mt-8 rounded-2xl border border-white/[0.06] p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)' }}>
+            <h2 className="text-xl font-bold text-white">No sessions yet</h2>
+            <p className="mt-2 text-sm text-white/40">Your coach has not posted a fixture, training session or tournament yet.</p>
+          </section>
+        )}
+        {renderScheduleList(false)}
+      </section>
+
+      <section className="hidden min-h-[calc(100vh-64px)] grid-cols-2 md:grid">
+        <aside className="sticky top-16 h-[calc(100vh-64px)] overflow-y-auto px-12 py-10">
+          <h1 className="text-4xl font-black text-white">{playerName}</h1>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full px-3 py-1 text-xs font-semibold text-black" style={{ backgroundColor: team.club_primary_colour }}>{team.age_group ?? 'Age TBC'}</span>
+            <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{team.gender ?? 'Mixed'}</span>
+          </div>
+          {heroSession ? renderHeroCard(heroSession, true) : (
+            <section className="mt-6 rounded-2xl border border-white/[0.06] p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)' }}>
+              <h2 className="text-2xl font-bold text-white">No sessions yet</h2>
+              <p className="mt-2 text-sm text-white/40">Your coach has not posted a fixture, training session or tournament yet.</p>
+            </section>
+          )}
+        </aside>
+
+        <section className="min-h-[calc(100vh-64px)] border-l px-12 py-10" style={{ backgroundColor: 'rgba(255,255,255,0.01)', borderColor: 'rgba(255,255,255,0.04)' }}>
+          <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-white/35">Your Availability</p>
+          {heroSession ? renderHeroAvailability(heroSession, true) : <p className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 text-sm text-white/35">No current session to respond to.</p>}
+          {renderScheduleList(true)}
+        </section>
       </section>
     </>
   );
