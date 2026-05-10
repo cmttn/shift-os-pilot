@@ -19,7 +19,7 @@ export default function BottomNav({ primaryColour, items }: BottomNavProps) {
   const visibleItems = items.slice(0, 5);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 h-16 border-t px-3 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" style={{ backgroundColor: 'rgba(8,10,15,0.95)', borderColor: 'rgba(255,255,255,0.06)' }}>
+    <nav className="fixed inset-x-0 bottom-0 z-50 h-16 border-t px-3 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden" style={{ backgroundColor: 'rgba(8,10,15,0.95)', borderColor: 'rgba(255,255,255,0.06)' }}>
       <div className="mx-auto grid h-full max-w-[480px] items-center" style={{ gridTemplateColumns: `repeat(${visibleItems.length}, minmax(0, 1fr))` }}>
         {visibleItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

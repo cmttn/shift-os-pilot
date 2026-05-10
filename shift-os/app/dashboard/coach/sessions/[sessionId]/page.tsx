@@ -46,7 +46,7 @@ export default async function CoachSessionPage({ params }: SessionPageProps) {
   if (!team) notFound();
   const [{ data: playersData }, { data: responsesData }] = await Promise.all([
     supabase.from('players').select('id,first_name,last_name,dob').eq('team_id', sessionData.team_id).eq('is_active', true).order('first_name', { ascending: true }),
-    supabase.from('poll_responses').select('player_id,player_token,status').eq('session_id', sessionData.id)
+    supabase.from('poll_responses').select('player_id,player_token,status,note').eq('session_id', sessionData.id)
   ]);
   const players = ((playersData ?? []) as RawPlayer[]).map((player) => ({
     id: player.id,

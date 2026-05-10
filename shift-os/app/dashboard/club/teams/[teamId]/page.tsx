@@ -23,8 +23,9 @@ interface TeamDetails {
 
 interface PlayerRecord {
   id: string;
-  full_name: string;
-  date_of_birth: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  dob: string | null;
   is_active: boolean | null;
 }
 
@@ -63,10 +64,17 @@ function titleCase(value: string | null): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function calculateAge(value: string | null): string {
-  if (!value) return 'Not set';
+function formatDob(value: string | null): string {
+  if (!value) return '';
   const dob = new Date(value);
-  if (Number.isNaN(dob.valueOf())) return 'Not set';
+  if (Number.isNaN(dob.valueOf())) return value;
+  return dob.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function calculateAge(value: string | null): string {
+  if (!value) return '';
+  const dob = new Date(value);
+  if (Number.isNaN(dob.valueOf())) return '';
   const today = new Date();
   let age = today.getFullYear() - dob.getFullYear();
   const monthDiff = today.getMonth() - dob.getMonth();
@@ -108,7 +116,7 @@ export default async function TeamInfoPage({ params, searchParams }: TeamInfoPag
   if (!teamData) notFound();
 
   const [{ data: playersData }, { data: togglesData }] = await Promise.all([
-    supabase.from('players').select('id,full_name,date_of_birth,is_active').eq('team_id', teamData.id).order('full_name', { ascending: true }),
+    supabase.from('players').select('id,first_name,last_name,dob,is_active').eq('team_id', teamData.id).order('first_name', { ascending: true }),
     supabase.from('feature_toggles').select('feature_key,is_enabled').eq('club_id', clubData.club.id)
   ]);
 
@@ -164,9 +172,9 @@ export default async function TeamInfoPage({ params, searchParams }: TeamInfoPag
               <div className="mt-6 space-y-3">
                 {players.map((player) => (
                   <article key={player.id} className="grid gap-3 rounded-xl border border-white/[0.05] bg-white/[0.02] p-4 text-sm md:grid-cols-[1.5fr_1fr_0.5fr_0.7fr_auto] md:items-center">
-                    <p className="font-medium text-white">{player.full_name}</p>
-                    <p className="text-white/40">{player.date_of_birth ?? 'DOB not set'}</p>
-                    <p className="text-white/40">{calculateAge(player.date_of_birth)}</p>
+                    <p className="font-medium text-white">{[player.first_name, player.last_name].filter(Boolean).join(' ') || 'Player'}</p>
+                    <p className="text-white/40">{formatDob(player.dob)}</p>
+                    <p className="text-white/40">{calculateAge(player.dob)}</p>
                     <span className="w-fit rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: player.is_active === false ? 'rgba(255,255,255,0.1)' : `${primaryColour}66`, color: player.is_active === false ? 'rgba(255,255,255,0.4)' : primaryColour }}>
                       {player.is_active === false ? 'Inactive' : 'Active'}
                     </span>

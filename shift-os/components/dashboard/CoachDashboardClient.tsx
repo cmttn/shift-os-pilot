@@ -33,7 +33,7 @@ function initials(name: string): string {
 }
 
 function formatDate(value: string | null): string {
-  if (!value) return 'DOB not set';
+  if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return value;
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -74,9 +74,9 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
 
   return (
     <main className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
-      <div className="mx-auto min-h-screen max-w-[480px] pb-[84px]">
-        <header className="fixed inset-x-0 top-0 z-40 h-14 border-b backdrop-blur-xl" style={{ backgroundColor: 'rgba(8,10,15,0.9)', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="mx-auto flex h-full max-w-[480px] items-center justify-between gap-3 px-4">
+      <div className="mx-auto min-h-screen max-w-[480px] pb-[84px] md:ml-[260px] md:max-w-[900px] md:px-8 md:pb-12">
+        <header className="fixed inset-x-0 top-0 z-40 h-14 border-b backdrop-blur-xl md:static md:border-b-0 md:pt-8" style={{ backgroundColor: 'rgba(8,10,15,0.9)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="mx-auto flex h-full max-w-[480px] items-center justify-between gap-3 px-4 md:max-w-[900px] md:px-0">
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
               {data.teams.length === 0 ? <span className="rounded-full bg-white/[0.08] px-4 py-2 text-sm text-white/45">No team</span> : data.teams.map((team) => (
                 <button key={team.id} type="button" onClick={() => setActiveTeamId(team.id)} className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out" style={team.id === activeTeam?.id ? { backgroundColor: primaryColour, color: contrastText } : { backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}>{team.name}</button>
@@ -86,8 +86,9 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
           </div>
         </header>
 
-        <div className="px-5 pt-20">
+        <div className="px-5 pt-20 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)] md:gap-6 md:px-0 md:pt-8">
           <NotificationPermission />
+          <div>
           {nextFixture ? (
             <Link href={`/dashboard/coach/sessions/${nextFixture.id}`} className="mb-8 block rounded-2xl p-5 text-white shadow-2xl transition-all duration-300 ease-out hover:-translate-y-0.5" style={{ background: `linear-gradient(135deg, ${primaryColour} 0%, #06100a 100%)` }}>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">Next {nextFixture.type}</p>
@@ -104,7 +105,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
             </Link>
           ) : null}
 
-          <section>
+          <section className="md:hidden">
             <div className="flex items-end justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-white">Your Squad</h1>
@@ -124,7 +125,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
                   <article key={player.id} className="rounded-[14px] border p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/15" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
                     <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: primaryColour, color: contrastText }}>{initials(player.full_name)}</div>
                     <h2 className="mt-2 text-sm font-semibold text-white">{player.full_name}</h2>
-                    <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}{calculateAge(player.dob) ? ` / ${calculateAge(player.dob)}` : ''}</p>
+                    {player.dob ? <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}{calculateAge(player.dob) ? ` / ${calculateAge(player.dob)}` : ''}</p> : null}
                   </article>
                 ))}
               </div>
@@ -162,6 +163,25 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
               </div>
             ))}
           </section>
+          </div>
+
+          <aside className="hidden md:block">
+            <section>
+              <div className="flex items-end justify-between gap-4">
+                <div><h1 className="text-2xl font-bold text-white">Your Squad</h1><p className="mt-1 text-sm text-white/40">{teamPlayers.length} players</p></div>
+                <Link href="/dashboard/coach/players/new" className="rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: primaryColour, color: primaryColour }}>Add Player +</Link>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                {teamPlayers.map((player) => (
+                  <article key={player.id} className="rounded-[14px] border p-4" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: primaryColour, color: contrastText }}>{initials(player.full_name)}</div>
+                    <h2 className="mt-2 text-sm font-semibold text-white">{player.full_name}</h2>
+                    {player.dob ? <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}</p> : null}
+                  </article>
+                ))}
+              </div>
+            </section>
+          </aside>
 
           <section className="mt-8">
             <h2 className="text-2xl font-bold text-white">Your Tools</h2>
