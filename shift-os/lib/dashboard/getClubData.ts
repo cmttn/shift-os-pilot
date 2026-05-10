@@ -114,6 +114,12 @@ export interface ClubDashboardData {
   totalPlayers: number;
   totalCoaches: number;
   totalFixtures: number;
+  stats: {
+    teamCount: number;
+    playerCount: number;
+    coachCount: number;
+    upcomingFixtureCount: number;
+  };
 }
 
 export async function getClubData(): Promise<ClubDashboardData | null> {
@@ -133,40 +139,83 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
   const membershipClub = membership?.clubs;
   const club = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;
   if (!club) return null;
+  const clubId = club.id;
+  if (!clubId) return null;
+  console.log('getClubData clubId:', clubId, 'userId:', session.user.id);
 
-  const [teamsRes, profileRes] = await Promise.all([
+  const [teamsRes, profileRes, statTeamsRes] = await Promise.all([
     supabase
       .from('teams')
       .select('id,name,age_group,gender,league,season,join_code')
-      .eq('club_id', club.id)
+      .eq('club_id', clubId)
       .eq('is_active', true)
       .order('name', { ascending: true }),
-    supabase.from('users_profile').select('full_name').eq('id', session.user.id).single()
+    supabase.from('users_profile').select('full_name').eq('id', session.user.id).single(),
+    supabase
+      .from('teams')
+      .select('id')
+      .eq('club_id', clubId)
+      .eq('is_active', true)
   ]);
+  console.log('teamRows:', statTeamsRes.data, 'teamError:', statTeamsRes.error);
 
   const rawProfile = profileRes.data as { full_name: string | null } | null;
   const fullName = rawProfile?.full_name?.trim() ?? '';
   const rawTeams = (teamsRes.data ?? []) as RawTeamRecord[];
-  const teamIds = rawTeams.map((team) => team.id);
-  const [leadCoachesRes, pendingInvitesRes, playersRes, sessionsRes, playerCountRes, coachCountRes, fixtureCountRes] =
+  const statTeamRows = (statTeamsRes.data ?? []) as Array<{ id: string }>;
+  const teamIds = statTeamRows.map((team) => team.id);
+  console.log('teamIds:', teamIds);
+
+  const stats = {
+    teamCount: teamIds.length,
+    playerCount: 0,
+    coachCount: 0,
+    upcomingFixtureCount: 0
+  };
+
+  if (teamIds.length > 0) {
+    const { count: playerCount, error: playerError } = await supabase
+      .from('players')
+      .select('id', { count: 'exact', head: true })
+      .in('team_id', teamIds)
+      .eq('is_active', true);
+    console.log('playerCount:', playerCount, 'playerError:', playerError);
+
+    const { count: coachCount, error: coachError } = await supabase
+      .from('team_coaches')
+      .select('id', { count: 'exact', head: true })
+      .in('team_id', teamIds);
+    console.log('coachCount:', coachCount, 'coachError:', coachError);
+
+    const now = new Date().toISOString();
+    const { count: fixtureCount, error: fixtureError } = await supabase
+      .from('sessions')
+      .select('id', { count: 'exact', head: true })
+      .in('team_id', teamIds)
+      .eq('is_active', true)
+      .gt('session_date', now);
+    console.log('fixtureCount:', fixtureCount, 'fixtureError:', fixtureError);
+
+    stats.playerCount = playerCount ?? 0;
+    stats.coachCount = coachCount ?? 0;
+    stats.upcomingFixtureCount = fixtureCount ?? 0;
+  } else {
+    console.log('getClubData stats skipped: no active teams for clubId', clubId);
+  }
+
+  const [leadCoachesRes, pendingInvitesRes, playersRes, sessionsRes] =
     teamIds.length > 0
       ? await Promise.all([
           supabase.from('team_coaches').select('team_id,user_id').in('team_id', teamIds).eq('is_lead', true),
           supabase.from('pending_invites').select('team_id,invite_token,invitee_name,invitee_email,expires_at').in('team_id', teamIds).eq('role', 'coach').eq('is_lead', true).eq('status', 'pending'),
           supabase.from('players').select('team_id,first_name,last_name,is_active').in('team_id', teamIds).eq('is_active', true),
-          supabase.from('sessions').select('id,team_id,session_date,opponent,title,type,location').in('team_id', teamIds).eq('is_active', true).gt('session_date', new Date().toISOString()).order('session_date', { ascending: true }),
-          supabase.from('players').select('*', { count: 'exact', head: true }).eq('is_active', true).in('team_id', teamIds),
-          supabase.from('team_coaches').select('*', { count: 'exact', head: true }).in('team_id', teamIds),
-          supabase.from('sessions').select('*', { count: 'exact', head: true }).in('team_id', teamIds).eq('is_active', true).gt('session_date', new Date().toISOString())
+          supabase.from('sessions').select('id,team_id,session_date,opponent,title,type,location').in('team_id', teamIds).eq('is_active', true).gt('session_date', new Date().toISOString()).order('session_date', { ascending: true })
         ])
       : [
           { data: [] as LeadCoachRecord[] },
           { data: [] as PendingInviteRecord[] },
           { data: [] as PlayerSummaryRecord[] },
-          { data: [] as SessionRecord[] },
-          { count: 0 },
-          { count: 0 },
-          { count: 0 }
+          { data: [] as SessionRecord[] }
         ];
   const leadCoaches = (leadCoachesRes.data ?? []) as LeadCoachRecord[];
   const pendingInvites = (pendingInvitesRes.data ?? []) as PendingInviteRecord[];
@@ -180,11 +229,11 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
   const pollResponses = (pollResponseData ?? []) as PollResponseCountRecord[];
   const coachIds = Array.from(new Set(leadCoaches.map((coach) => coach.user_id)));
   console.log('getClubData raw counts', {
-    club_id: club.id,
-    teams: rawTeams.length,
-    players: playerCountRes.count ?? 0,
-    coaches: coachCountRes.count ?? 0,
-    upcoming_sessions: fixtureCountRes.count ?? 0
+    club_id: clubId,
+    teams: stats.teamCount,
+    players: stats.playerCount,
+    coaches: stats.coachCount,
+    upcoming_sessions: stats.upcomingFixtureCount
   });
   const { data: coachProfilesData } =
     coachIds.length > 0
@@ -254,8 +303,9 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
       unavailable_count: pollResponses.filter((response) => response.session_id === item.id && response.status === 'unavailable').length,
       pending_count: pollResponses.filter((response) => response.session_id === item.id && response.status === 'pending').length
     })),
-    totalPlayers: playerCountRes.count ?? 0,
-    totalCoaches: coachCountRes.count ?? 0,
-    totalFixtures: fixtureCountRes.count ?? 0
+    totalPlayers: stats.playerCount,
+    totalCoaches: stats.coachCount,
+    totalFixtures: stats.upcomingFixtureCount,
+    stats
   };
 }
