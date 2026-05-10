@@ -5,7 +5,8 @@ import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
 
 export default async function ParentSettingsPage() {
   const parentData = await getParentDashboardData();
-  if (!parentData) redirect('/dashboard/parent/player');
+  if (!parentData) redirect('/dashboard/parent');
+  const primaryColour = parentData.allSameClub ? parentData.globalPrimaryColour : '#f0f4ff';
   return (
     <>
       <SettingsShell
@@ -16,11 +17,11 @@ export default async function ParentSettingsPage() {
           { label: 'Linked players', value: parentData.players.map((player) => player.full_name).join(', ') || 'No linked players' }
         ]}
       />
-      <BottomNav primaryColour={parentData.club.primary_colour} items={[
-        { href: '/dashboard/parent/player', label: 'Home', icon: 'H' },
-        { href: '/dashboard/parent/player', label: 'Fixtures', icon: 'F' },
-        { href: '/dashboard/parent/player', label: 'Avail', icon: 'A' },
-        { href: '/dashboard/parent/player', label: 'Team', icon: 'T' },
+      <BottomNav primaryColour={primaryColour} items={[
+        { href: '/dashboard/parent', label: 'Home', icon: 'H' },
+        { href: '/dashboard/parent', label: 'Fixtures', icon: 'F' },
+        { href: '/dashboard/parent', label: 'Avail', icon: 'A' },
+        { href: '/dashboard/parent', label: 'Team', icon: 'T' },
         { href: '/dashboard/parent/settings', label: 'Settings', icon: 'S' }
       ]} />
     </>
