@@ -108,6 +108,14 @@ interface RawPollResponse {
   status: ParentAvailabilityStatus | null;
 }
 
+interface RawPollResponseWithoutPlayer {
+  id: string;
+  session_id: string;
+  player_token: string | null;
+  status: ParentAvailabilityStatus | null;
+  responded_at: string | null;
+}
+
 function calculateAge(dob: string | null): number | null {
   if (!dob) return null;
   const birthDate = new Date(dob);
@@ -161,33 +169,50 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
   if (playerRows.length === 0) return null;
 
   const teamIds = Array.from(new Set(playerRows.map((player) => player.team_id).filter((teamId): teamId is string => Boolean(teamId))));
-  const [{ data: teamRowsData }, { data: sessionRowsData }] = await Promise.all([
-    teamIds.length > 0 ? supabase.from('teams').select('id,name,age_group,gender,club_id').in('id', teamIds) : Promise.resolve({ data: [] as RawTeam[] }),
-    teamIds.length > 0
-      ? supabase
-          .from('sessions')
-          .select('id,team_id,type,opponent,title,session_date,location,full_address,postcode,coach_notes,tournify_link,poll_sent,session_token')
-          .in('team_id', teamIds)
-          .eq('is_active', true)
-          .gte('session_date', new Date().toISOString())
-          .order('session_date', { ascending: true })
-      : Promise.resolve({ data: [] as RawSession[] })
-  ]);
+  const { data: teamRowsData } = teamIds.length > 0
+    ? await supabase.from('teams').select('id,name,age_group,gender,club_id').in('id', teamIds)
+    : { data: [] as RawTeam[] };
 
   const teamRows = (teamRowsData ?? []) as RawTeam[];
+  const sessionResults = await Promise.all(
+    teamRows.map((team) =>
+      supabase
+        .from('sessions')
+        .select('*')
+        .eq('team_id', team.id)
+        .eq('is_active', true)
+        .gt('session_date', new Date().toISOString())
+        .order('session_date', { ascending: true })
+    )
+  );
+  const sessionRows = sessionResults.flatMap((result) => (result.data ?? []) as RawSession[]);
   const clubIds = Array.from(new Set(teamRows.map((team) => team.club_id).filter((clubId): clubId is string => Boolean(clubId))));
-  const sessionRows = (sessionRowsData ?? []) as RawSession[];
-  const sessionIds = sessionRows.map((item) => item.id);
 
-  const [{ data: clubRowsData }, { data: responseRowsData }] = await Promise.all([
-    clubIds.length > 0 ? supabase.from('clubs').select('id,name,badge_url,primary_colour,secondary_colour').in('id', clubIds) : Promise.resolve({ data: [] as RawClub[] }),
-    sessionIds.length > 0
-      ? supabase.from('poll_responses').select('id,session_id,player_id,player_token,status').in('session_id', sessionIds).in('player_id', playerRows.map((player) => player.id))
-      : Promise.resolve({ data: [] as RawPollResponse[] })
-  ]);
+  const responseResults = await Promise.all(
+    playerRows.map(async (player) => {
+      const playerSessionIds = sessionRows.filter((sessionRow) => sessionRow.team_id === player.team_id).map((sessionRow) => sessionRow.id);
+      if (playerSessionIds.length === 0) return [] as RawPollResponse[];
+      const { data: pollResponses } = await supabase
+        .from('poll_responses')
+        .select('session_id, player_token, status, responded_at, id')
+        .eq('player_id', player.id)
+        .in('session_id', playerSessionIds);
+      return ((pollResponses ?? []) as RawPollResponseWithoutPlayer[]).map((pollResponse) => ({
+        id: pollResponse.id,
+        session_id: pollResponse.session_id,
+        player_id: player.id,
+        player_token: pollResponse.player_token,
+        status: pollResponse.status
+      }));
+    })
+  );
+
+  const { data: clubRowsData } = clubIds.length > 0
+    ? await supabase.from('clubs').select('id,name,badge_url,primary_colour,secondary_colour').in('id', clubIds)
+    : { data: [] as RawClub[] };
 
   const clubRows = (clubRowsData ?? []) as RawClub[];
-  const responseRows = (responseRowsData ?? []) as RawPollResponse[];
+  const responseRows = responseResults.flat();
   const profile = profileRes.data as RawProfile | null;
   const profileName = profile?.full_name?.trim() ?? '';
   const firstName = profileName.length > 0 ? profileName.split(' ')[0] : session.user.email?.split('@')[0] ?? 'there';

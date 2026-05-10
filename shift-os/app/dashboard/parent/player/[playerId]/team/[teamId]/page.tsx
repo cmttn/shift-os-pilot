@@ -23,6 +23,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
 
   const singleContext = data.players.length === 1 && player.teams.length === 1;
   const heroSession = team.upcoming_sessions[0] ?? null;
+  console.log('[parent-team-dashboard] sessions', team.upcoming_sessions);
 
   return (
     <main className="min-h-screen px-5 pb-24 pt-5 text-white" style={{ backgroundColor: '#080a0f' }}>
