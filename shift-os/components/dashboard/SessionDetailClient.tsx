@@ -69,9 +69,11 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
   const [pollSent, setPollSent] = useState(data.session.poll_sent);
   const [pollSentAt, setPollSentAt] = useState(data.session.poll_sent_at);
   const [shareMessage, setShareMessage] = useState('');
+  const [copied, setCopied] = useState('');
   const [coachNotes, setCoachNotes] = useState(data.session.coach_notes ?? '');
   const [error, setError] = useState('');
   const primaryColour = data.team.primaryColour;
+  const groupPollUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/poll/${data.session.session_token}`;
 
   const counts = useMemo(() => ({
     available: responses.filter((response) => response.status === 'available').length,
@@ -81,35 +83,29 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
   }), [responses]);
   const confirmedPercent = data.players.length > 0 ? Math.round(((counts.available + counts.unavailable) / data.players.length) * 100) : 0;
 
-  function buildMessage(nextResponses: SessionDetailResponse[]): string {
-    const origin = window.location.origin;
-    const responseByPlayer = new Map(nextResponses.map((response) => [response.player_id, response]));
-    const activePlayers = data.players.filter((player) => !weekOffIds.includes(player.id) && responseByPlayer.get(player.id)?.note !== 'restricted_by_club');
-    const weekOffPlayers = data.players.filter((player) => weekOffIds.includes(player.id) && responseByPlayer.get(player.id)?.note !== 'restricted_by_club');
-    const restrictedPlayers = data.players.filter((player) => responseByPlayer.get(player.id)?.note === 'restricted_by_club');
-    const header = [
-      `Availability Check - ${data.team.name}`,
-      '',
-      `${data.session.type.toUpperCase()} ${data.session.opponent ? `vs ${data.session.opponent}` : data.session.title ?? ''}`,
-      `Date: ${formatDate(data.session.session_date)}`,
-      `Location: ${data.session.full_address || data.session.location || 'Location TBC'}`,
-      '',
-      'Please confirm availability for each player:',
-      ''
-    ];
-    const playerLines = activePlayers.flatMap((player) => {
-      const response = responseByPlayer.get(player.id);
-      const token = response?.player_token ?? '';
-      return [
-        player.full_name,
-        `Available -> ${origin}/poll/${data.session.session_token}/${token}/available`,
-        `Not Available -> ${origin}/poll/${data.session.session_token}/${token}/unavailable`,
-        ''
-      ];
+  function buildMessage(): string {
+    const sessionType = data.session.type === 'match' ? 'Match' : data.session.type === 'training' ? 'Training' : 'Tournament';
+    const formattedDate = new Date(data.session.session_date).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
     });
-    const weekOffLines = weekOffPlayers.length > 0 ? ['', ...weekOffPlayers.map((player) => `${player.full_name} - Week Off (no response needed)`), ''] : [];
-    const restrictedLines = restrictedPlayers.length > 0 ? ['', ...restrictedPlayers.map((player) => `${player.full_name} - Unavailable (contact club)`), ''] : [];
-    return [...header, ...playerLines, ...weekOffLines, ...restrictedLines, 'Powered by Shift OS'].join('\n');
+    const formattedTime = new Date(data.session.session_date).toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const location = data.session.full_address || data.session.location || 'TBC';
+
+    return `📋 *Availability Check — ${data.team.name}*
+
+*${sessionType}*${data.session.opponent ? ` vs ${data.session.opponent}` : ''}
+📅 ${formattedDate} at ${formattedTime}
+📍 ${location}${data.session.coach_notes ? `\n\n📝 ${data.session.coach_notes}` : ''}
+
+Please confirm your child's availability:
+👇 ${groupPollUrl}
+
+_Powered by Shift OS_`;
   }
 
   async function sendPoll() {
@@ -147,7 +143,7 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
     setResponses(nextResponses);
     setPollSent(true);
     setPollSentAt(new Date().toISOString());
-    setShareMessage(buildMessage(nextResponses));
+    setShareMessage(buildMessage());
   }
 
   async function overrideStatus(playerId: string, status: SessionDetailResponse['status']) {
@@ -161,6 +157,12 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
 
   async function copyMessage() {
     await navigator.clipboard.writeText(shareMessage);
+    setCopied('message');
+  }
+
+  async function copyGroupPollUrl() {
+    await navigator.clipboard.writeText(groupPollUrl);
+    setCopied('link');
   }
 
   async function saveCoachNotes() {
@@ -235,7 +237,7 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
             <>
               <span className="flex-1 text-xs text-white/40">Poll sent {pollSentAt ? formatDate(pollSentAt) : ''}</span>
               <button type="button" onClick={sendPoll} className="rounded-full border border-white/10 px-4 py-3 text-sm text-white">Resend Poll</button>
-              <button type="button" onClick={() => setShareMessage(buildMessage(responses))} className="rounded-full bg-[#25D366] px-4 py-3 text-sm font-semibold text-black">WhatsApp Share</button>
+              <button type="button" onClick={() => setShareMessage(buildMessage())} className="rounded-full bg-[#25D366] px-4 py-3 text-sm font-semibold text-black">WhatsApp Share</button>
             </>
           )}
         </div>
@@ -243,12 +245,24 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
 
       {shareMessage ? (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
-          <section className="fixed inset-x-0 bottom-0 rounded-t-[20px] p-5" style={{ backgroundColor: 'rgba(8,10,15,0.98)' }}>
-            <button type="button" onClick={() => setShareMessage('')} className="absolute right-5 top-4 text-2xl text-white/45">x</button>
-            <h2 className="text-xl font-bold">Share poll</h2>
-            <pre className="mt-4 max-h-[320px] overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-4 whitespace-pre-wrap text-xs text-white/70">{shareMessage}</pre>
-            <button type="button" onClick={copyMessage} className="mt-4 w-full rounded-full px-6 py-3 font-semibold text-white" style={{ backgroundColor: primaryColour }}>Copy Full Message</button>
-            <a href={`https://wa.me/?text=${encodeURIComponent(shareMessage)}`} className="mt-3 block w-full rounded-full bg-[#25D366] px-6 py-3 text-center font-semibold text-black">Open WhatsApp</a>
+          <section className="fixed inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-[20px] p-5" style={{ backgroundColor: 'rgba(8,10,15,0.98)' }}>
+            <button type="button" onClick={() => { setShareMessage(''); setCopied(''); }} className="absolute right-5 top-4 text-2xl text-white/45">x</button>
+            <h2 className="text-xl font-bold text-white">Poll Ready to Share</h2>
+
+            <p className="mb-2 mt-5 text-xs uppercase tracking-widest text-white/35">Group Poll Link</p>
+            <div className="select-all break-all rounded-xl border bg-white/[0.04] p-3 font-mono text-sm text-white" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>{groupPollUrl}</div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button type="button" onClick={copyGroupPollUrl} className="rounded-full border border-white/10 px-4 py-3 text-sm text-white">{copied === 'link' ? 'Copied! ✓' : '📋 Copy Link'}</button>
+              <a href={`https://wa.me/?text=${encodeURIComponent(shareMessage)}`} className="rounded-full bg-[#25D366] px-4 py-3 text-center text-sm font-semibold text-white">📱 Open WhatsApp</a>
+            </div>
+
+            <p className="mb-2 mt-5 text-xs uppercase tracking-widest text-white/35">Preview</p>
+            <p className="text-xs text-white/35">How it looks in WhatsApp:</p>
+            <div className="mt-3 whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-[#dcf8c6] p-4 font-sans text-sm text-[#111111]">{shareMessage}</div>
+            <button type="button" onClick={copyMessage} className="mt-3 rounded-full border border-white/10 px-4 py-2 text-sm text-white">{copied === 'message' ? 'Copied! ✓' : 'Copy Full Message'}</button>
+
+            <p className="mt-5 text-xs uppercase tracking-widest text-white/35">App Users</p>
+            <p className="mt-2 text-sm text-white/40">Players/parents with Shift OS installed receive push notifications directly</p>
           </section>
         </div>
       ) : null}
