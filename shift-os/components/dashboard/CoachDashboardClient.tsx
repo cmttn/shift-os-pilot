@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import NotificationPermission from '@/components/NotificationPermission';
 import BottomNav from '@/components/mobile/BottomNav';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 
@@ -87,7 +86,6 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
         </header>
 
         <div className="px-5 pt-20 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)] md:gap-6 md:px-0 md:pt-8">
-          <NotificationPermission />
           <div>
           {nextFixture ? (
             <Link href={`/dashboard/coach/sessions/${nextFixture.id}`} className="mb-8 block rounded-2xl p-5 text-white shadow-2xl transition-all duration-300 ease-out hover:-translate-y-0.5" style={{ background: `linear-gradient(135deg, ${primaryColour} 0%, #06100a 100%)` }}>

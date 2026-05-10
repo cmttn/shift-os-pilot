@@ -1,66 +1,91 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+
+const DISMISS_KEY = 'notifications-dismissed';
 
 function urlBase64ToArrayBuffer(value: string): ArrayBuffer {
   const padding = '='.repeat((4 - (value.length % 4)) % 4);
   const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
   const rawData = window.atob(base64);
   const output = new Uint8Array(rawData.length);
-  for (let index = 0; index < rawData.length; index += 1) output[index] = rawData.charCodeAt(index);
+  for (let index = 0; index < rawData.length; index += 1) {
+    output[index] = rawData.charCodeAt(index);
+  }
   return output.buffer.slice(output.byteOffset, output.byteOffset + output.byteLength);
 }
 
 export default function NotificationPermission() {
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [message, setMessage] = useState('');
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if ('Notification' in window && Notification.permission !== 'granted') setShowPrompt(true);
+    const dismissed = window.localStorage.getItem(DISMISS_KEY) === 'true';
+    if (dismissed || !('Notification' in window) || Notification.permission === 'granted') {
+      setVisible(false);
+      return;
+    }
+    setVisible(true);
   }, []);
 
-  async function enableNotifications() {
-    setMessage('');
+  function dismiss() {
+    window.localStorage.setItem(DISMISS_KEY, 'true');
+    setVisible(false);
+  }
+
+  async function subscribeToPush() {
     const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!publicKey || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setMessage('Notifications are not available on this device yet.');
+    if (!publicKey || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    await navigator.serviceWorker.register('/sw.js');
+    const registration = await navigator.serviceWorker.ready;
+    const existingSubscription = await registration.pushManager.getSubscription();
+    const subscription = existingSubscription ?? await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToArrayBuffer(publicKey)
+    });
+
+    await fetch('/api/push-subscription', {
+      method: 'POST',
+      body: JSON.stringify(subscription),
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  async function handleAllow() {
+    if (!('Notification' in window)) {
+      dismiss();
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      dismiss();
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      dismiss();
       return;
     }
 
     const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToArrayBuffer(publicKey)
-    });
-    const subscriptionJson = subscription.toJSON();
-    const supabase = createClient();
-    const {
-      data: { session }
-    } = await supabase.auth.getSession();
-    if (!session || !subscriptionJson.endpoint || !subscriptionJson.keys?.p256dh || !subscriptionJson.keys?.auth) return;
-    const { error } = await supabase.from('push_subscriptions').upsert({
-      user_id: session.user.id,
-      endpoint: subscriptionJson.endpoint,
-      p256dh: subscriptionJson.keys.p256dh,
-      auth: subscriptionJson.keys.auth
-    });
-    if (error) {
-      setMessage(error.message);
-      return;
+    if (permission === 'granted') {
+      await subscribeToPush();
     }
-    setShowPrompt(false);
+    dismiss();
   }
 
-  if (!showPrompt) return null;
+  if (!visible) return null;
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-      <p className="font-semibold text-white">Enable notifications to get availability alerts</p>
-      <button type="button" onClick={enableNotifications} className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black">Allow notifications</button>
-      {message ? <p className="mt-2 text-sm text-white/40">{message}</p> : null}
+    <section className="fixed inset-x-0 bottom-16 z-40 flex h-12 items-center gap-3 border-b px-4 md:bottom-auto md:left-[260px] md:top-0" style={{ backgroundColor: 'rgba(0,200,81,0.08)', borderColor: 'rgba(0,200,81,0.15)' }}>
+      <span className="text-sm" aria-hidden="true">🔔</span>
+      <p className="min-w-0 flex-1 truncate text-sm text-white/70">Enable notifications to get availability alerts</p>
+      <button type="button" onClick={handleAllow} className="rounded-full border px-3 py-1 text-xs font-semibold transition-all duration-300 ease-out hover:bg-white/[0.04]" style={{ borderColor: 'rgba(0,200,81,0.4)', color: '#00C851' }}>
+        Allow
+      </button>
+      <button type="button" onClick={dismiss} className="text-xs text-white/30 transition-all duration-300 ease-out hover:text-white/60" aria-label="Dismiss notifications prompt">
+        ✕
+      </button>
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 import CoachSidebar from '@/components/dashboard/CoachSidebar';
+import NotificationPermission from '@/components/NotificationPermission';
 import { getCoachData } from '@/lib/dashboard/getCoachData';
 
 export default async function CoachLayout({ children }: { children: ReactNode }) {
@@ -9,6 +10,7 @@ export default async function CoachLayout({ children }: { children: ReactNode })
   return (
     <>
       <CoachSidebar data={coachData} />
+      <NotificationPermission />
       {children}
     </>
   );
