@@ -74,8 +74,9 @@ export default async function ClubDashboardHomePage() {
   return (
     <div className="-mx-4 -my-4 min-h-screen px-4 pb-16 pt-10 md:-mx-8 md:-my-8 md:px-8" style={{ background: `radial-gradient(ellipse at top, ${primaryColour}10 0%, transparent 50%), #080a0f` }}>
       <section className="pb-2">
-        <h2 className="text-4xl font-black tracking-tight text-white md:text-5xl">Welcome to {clubData.club.name}</h2>
-        <p className="mt-3 text-lg font-normal text-white/40">Good {greeting}, {clubData.firstName} - here&apos;s your club overview.</p>
+        <h1 className="hidden text-5xl font-black tracking-tight text-white md:block">Welcome to {clubData.club.name}</h1>
+        <p className="mt-4 text-xl font-semibold text-white md:hidden">Good {greeting}, {clubData.firstName}</p>
+        <p className="mt-3 hidden text-lg font-normal text-white/40 md:block">Good {greeting}, {clubData.firstName} - here&apos;s your club overview.</p>
         <div className="mt-4 h-px w-full bg-white/[0.06]" />
       </section>
 

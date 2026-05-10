@@ -55,6 +55,12 @@ function formatSessionDate(value: string): string {
   return `${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} at ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+function formatCompactSessionDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return value;
+  return `${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · KO ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
 export default function CoachDashboardClient({ data }: CoachDashboardClientProps) {
   const [activeTeamId, setActiveTeamId] = useState(data.activeTeamId);
   const activeTeam = data.teams.find((team) => team.id === activeTeamId) ?? data.teams[0] ?? null;
@@ -88,18 +94,20 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
         <div className="px-5 pt-20 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)] md:gap-6 md:px-0 md:pt-8">
           <div>
           {nextFixture ? (
-            <Link href={`/dashboard/coach/sessions/${nextFixture.id}`} className="mb-8 block rounded-2xl p-5 text-white shadow-2xl transition-all duration-300 ease-out hover:-translate-y-0.5" style={{ background: `linear-gradient(135deg, ${primaryColour} 0%, #06100a 100%)` }}>
+            <Link href={`/dashboard/coach/sessions/${nextFixture.id}`} className="mb-8 block max-h-[180px] overflow-hidden rounded-2xl p-4 text-white shadow-2xl transition-all duration-300 ease-out hover:-translate-y-0.5 md:max-h-none md:p-5" style={{ background: `linear-gradient(135deg, ${primaryColour} 0%, #06100a 100%)` }}>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">Next {nextFixture.type}</p>
-              <h1 className="mt-3 text-2xl font-black">{activeTeam?.name} {nextFixture.opponent ? `v ${nextFixture.opponent}` : nextFixture.title ?? ''}</h1>
-              <p className="mt-2 text-sm text-white/75">{formatSessionDate(nextFixture.session_date)}</p>
-              <p className="mt-1 text-sm text-white/70">{nextFixture.full_address || nextFixture.location || 'Location TBC'}</p>
+              <h1 className="mt-2 truncate text-lg font-bold md:mt-3 md:text-2xl md:font-black">{activeTeam?.name} {nextFixture.opponent ? `v ${nextFixture.opponent}` : nextFixture.title ?? ''}</h1>
+              <p className="mt-1 text-sm text-white/75 md:hidden">{formatCompactSessionDate(nextFixture.session_date)}</p>
+              <p className="mt-2 hidden text-sm text-white/75 md:block">{formatSessionDate(nextFixture.session_date)}</p>
+              <p className="mt-1 truncate text-sm text-white/70">{nextFixture.full_address || nextFixture.location || 'Location TBC'}</p>
               {nextFixture.opposition_contact_name || nextFixture.opposition_contact_phone ? <p className="mt-1 text-sm text-white/70">Contact: {[nextFixture.opposition_contact_name, nextFixture.opposition_contact_phone].filter(Boolean).join(' - ')}</p> : null}
-              {nextFixture.coach_notes ? <p className="mt-3 text-sm italic text-white/75">{nextFixture.coach_notes}</p> : null}
-              <div className="mt-5 rounded-2xl bg-black/20 p-4">
-                <p className="text-4xl font-black">{nextFixture.available_count}</p>
-                <p className="text-sm text-white/70">available of {teamPlayers.length} players</p>
+              {nextFixture.coach_notes ? <p className="mt-2 line-clamp-2 text-xs italic text-white/75 md:mt-3 md:text-sm">{nextFixture.coach_notes} <span className="text-white/45">Read more</span></p> : null}
+              <div className="mt-3 rounded-xl bg-black/20 p-3 md:mt-5 md:rounded-2xl md:p-4">
+                <p className="hidden text-4xl font-black md:block">{nextFixture.available_count}</p>
+                <p className="text-sm text-white/70">{nextFixture.available_count} of {teamPlayers.length} available</p>
+                <p className="mt-1 text-xs text-white/65 md:hidden">✓ {nextFixture.available_count} &nbsp; × {nextFixture.unavailable_count} &nbsp; ? {nextFixture.pending_count}</p>
               </div>
-              {!nextFixture.poll_sent ? <span className="mt-4 inline-block rounded-full bg-white px-4 py-2 text-sm font-semibold" style={{ color: primaryColour }}>Send Availability Poll</span> : null}
+              {!nextFixture.poll_sent ? <span className="mt-3 inline-block rounded-full bg-white px-4 py-2 text-sm font-semibold md:mt-4" style={{ color: primaryColour }}>Send Availability Poll</span> : null}
             </Link>
           ) : null}
 

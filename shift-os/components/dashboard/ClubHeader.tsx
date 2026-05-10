@@ -34,7 +34,7 @@ export default function ClubHeader({ clubData }: ClubHeaderProps) {
 
   return (
     <header
-      className="relative min-h-[200px] overflow-hidden py-8 md:h-[200px] md:py-0"
+      className="relative max-h-[80px] min-h-[80px] overflow-hidden px-5 py-4 md:max-h-none md:h-[200px] md:px-0 md:py-0"
       style={{ background: `linear-gradient(135deg, ${club.primary_colour} 0%, ${darkColour} 45%, #080a0f 100%)` }}
     >
       <div
@@ -46,29 +46,29 @@ export default function ClubHeader({ clubData }: ClubHeaderProps) {
       />
       <div className="absolute inset-x-0 bottom-0 h-full" style={{ background: 'linear-gradient(to bottom, transparent 50%, #080a0f 100%)' }} />
 
-      <div className="relative flex h-full flex-col items-center justify-center px-5 text-center md:flex-row md:justify-between md:px-10 md:text-left">
-        <div className="flex flex-col items-center md:flex-row">
+      <div className="relative flex h-full items-center justify-start gap-3 text-left md:justify-between md:px-10">
+        <div className="flex min-w-0 items-center">
           {club.badge_url ? (
             <img
               src={club.badge_url}
               alt={`${club.name} badge`}
-              className="h-20 w-20 overflow-hidden rounded-full object-cover md:h-[110px] md:w-[110px]"
+              className="h-12 w-12 shrink-0 overflow-hidden rounded-full object-cover md:h-[110px] md:w-[110px]"
               style={{ filter: `drop-shadow(0 12px 32px rgba(0,0,0,0.8)) drop-shadow(0 0 20px ${club.primary_colour}66)` }}
             />
           ) : (
             <p
-              className="text-5xl font-black leading-none text-white md:text-6xl"
+              className="shrink-0 text-3xl font-black leading-none text-white md:text-6xl"
               style={{ textShadow: `0 0 40px ${club.primary_colour}` }}
             >
               {initials}
             </p>
           )}
 
-          <div className="mt-5 md:ml-6 md:mt-0">
-            <h1 className="text-4xl font-black tracking-tight text-white md:text-5xl" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
+          <div className="ml-3 min-w-0 md:ml-6">
+            <h1 className="truncate text-lg font-bold tracking-tight text-white md:text-5xl md:font-black" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
               {club.name}
             </h1>
-            <p className="mx-auto mt-2 max-w-sm text-sm italic text-white/45 md:mx-0">{club.ethos ?? 'Building players and people every day.'}</p>
+            <p className="mt-2 hidden max-w-sm text-sm italic text-white/45 md:block">{club.ethos ?? 'Building players and people every day.'}</p>
           </div>
         </div>
 

@@ -271,11 +271,9 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
     return 'unassigned';
   };
 
-  const emailPrefix = session.user.email?.split('@')[0]?.trim() ?? '';
-
   return {
     userId: session.user.id,
-    firstName: fullName.length > 0 ? fullName.split(' ')[0] : emailPrefix || 'there',
+    firstName: fullName.length > 0 ? fullName.split(' ')[0] : 'there',
     clubRole: typeof membership?.club_role === 'string' ? membership.club_role : '',
     club,
     teams: rawTeams.map((team) => ({

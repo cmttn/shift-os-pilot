@@ -44,15 +44,9 @@ export default async function ParentDashboardPage() {
   return (
     <main className="min-h-screen px-5 text-white" style={{ background }}>
       <div className="mx-auto max-w-[520px] pb-12">
-        <header className="pb-6 pt-10 text-center">
-          <h1 className="text-4xl font-black text-white">Welcome, {data.parentFirstName}</h1>
-          <p className="mt-2 text-base text-white/40">Select who you&apos;d like to follow</p>
-          {data.allSameClub ? (
-            <div className="mt-6">
-              {data.globalClubBadge ? <img src={data.globalClubBadge} alt="" className="mx-auto h-14 w-14 rounded-full object-cover drop-shadow-[0_8px_24px_rgba(0,0,0,0.55)]" /> : null}
-              <p className="mt-2 text-sm text-white/35">{data.globalClubName}</p>
-            </div>
-          ) : null}
+        <header className="pb-6 pt-8 text-center">
+          <h1 className="text-3xl font-black text-white">Welcome, {data.parentFirstName}</h1>
+          <p className="mt-2 text-sm text-white/40">Here&apos;s who you&apos;re following</p>
         </header>
 
         {data.players.length === 0 ? (

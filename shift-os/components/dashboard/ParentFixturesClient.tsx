@@ -40,7 +40,16 @@ function statusStyles(status: ParentAvailabilityStatus): { label: string; colour
   if (status === 'available') return { label: 'Available', colour: '#10b981', icon: '✓' };
   if (status === 'unavailable') return { label: 'Not Available', colour: '#ef4444', icon: '×' };
   if (status === 'week_off') return { label: 'Week Off', colour: 'rgba(255,255,255,0.25)', icon: '○' };
-  return { label: 'Confirm', colour: '#f59e0b', icon: '?' };
+  return { label: 'Confirm', colour: '#f59e0b', icon: '' };
+}
+
+function displayAddress(session: ParentSession): string {
+  if (session.full_address) {
+    return session.postcode && !session.full_address.includes(session.postcode)
+      ? `${session.full_address}, ${session.postcode}`
+      : session.full_address;
+  }
+  return session.location ?? 'TBC';
 }
 
 export default function ParentFixturesClient({ playerId, playerName, team, heroSessionId }: ParentFixturesClientProps) {
@@ -100,10 +109,11 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/55">Next {heroSession.type}</p>
               <h2 className="mt-3 text-2xl font-black text-white md:text-3xl">{sessionTitle(team.team_name, heroSession)}</h2>
               <div className="mt-4 space-y-2 text-sm text-white/70 md:text-base">
-                <p>📅 {formatDay(heroSession.session_date)} | ⏰ KO {formatTime(heroSession.session_date)}</p>
-                <p>📍 {heroSession.full_address ?? heroSession.location ?? 'Location TBC'}{heroSession.postcode ? `, ${heroSession.postcode}` : ''}</p>
+                <p><span className="text-xs uppercase tracking-wider text-white/40">Date:</span> <span className="text-white/80">{formatDay(heroSession.session_date)}</span></p>
+                <p><span className="text-xs uppercase tracking-wider text-white/40">Time:</span> <span className="text-white/80">KO {formatTime(heroSession.session_date)}</span></p>
+                <p><span className="text-xs uppercase tracking-wider text-white/40">Location:</span> <span className="text-white/80">{displayAddress(heroSession)}</span></p>
                 {heroSession.opposition_contact_name || heroSession.opposition_contact_phone ? <p className="hidden md:block">☎ {[heroSession.opposition_contact_name, heroSession.opposition_contact_phone].filter(Boolean).join(' - ')}</p> : null}
-                {heroSession.coach_notes ? <p className="italic text-white/55">📝 {heroSession.coach_notes}</p> : null}
+                {heroSession.coach_notes ? <p><span className="text-xs uppercase tracking-wider text-white/40">Notes:</span> <span className="italic text-white/55">{heroSession.coach_notes}</span></p> : null}
               </div>
               {heroSession.tournify_link ? <a href={heroSession.tournify_link} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">🏆 View Tournament →</a> : null}
             </div>
@@ -151,7 +161,7 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
                   <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-white md:text-lg">{sessionTitle(team.team_name, session)}</h3>
                     <p className="mt-1 text-sm text-white/40">{formatDay(session.session_date)} at {formatTime(session.session_date)}</p>
-                    <p className="mt-1 text-xs text-white/30 md:text-sm">{session.full_address ?? session.location ?? 'Location TBC'}</p>
+                    <p className="mt-1 text-xs text-white/30 md:text-sm">{displayAddress(session)}</p>
                     {session.opposition_contact_name || session.opposition_contact_phone ? <p className="mt-1 hidden text-xs text-white/30 md:block">Contact: {[session.opposition_contact_name, session.opposition_contact_phone].filter(Boolean).join(' - ')}</p> : null}
                     {session.coach_notes ? <p className="mt-3 line-clamp-2 text-sm italic text-white/35">{session.coach_notes}</p> : null}
                   </div>
@@ -162,7 +172,7 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
                     className="h-9 shrink-0 rounded-full px-3 text-xs font-semibold text-white transition-all duration-300 ease-out disabled:cursor-not-allowed"
                     style={{ backgroundColor: status.colour }}
                   >
-                    {status.icon} {status.label}
+                    {status.icon ? `${status.icon} ` : ''}{status.label}
                   </button>
                 </div>
               </article>
