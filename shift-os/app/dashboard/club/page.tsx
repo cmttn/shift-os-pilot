@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ClubFixturesPanel from '@/components/dashboard/ClubFixturesPanel';
 import ClubTeamScroller from '@/components/dashboard/ClubTeamScroller';
 import { getClubData } from '@/lib/dashboard/getClubData';
 import { createClient } from '@/lib/supabase/server';
@@ -47,7 +48,7 @@ export default async function ClubDashboardHomePage() {
     ['Teams', clubData.teams.length],
     ['Players', clubData.totalPlayers],
     ['Coaches', clubData.totalCoaches],
-    ['Fixtures', clubData.fixtures.length]
+    ['Fixtures', clubData.totalFixtures]
   ];
   const teamIds = clubData.teams.map((team) => team.id);
   const { data: coachesData } = teamIds.length > 0 ? await supabase.from('team_coaches').select('user_id').in('team_id', teamIds) : { data: [] as Array<{ user_id: string }> };
@@ -75,10 +76,10 @@ export default async function ClubDashboardHomePage() {
       <section className="pb-2">
         <h2 className="text-4xl font-black tracking-tight text-white md:text-5xl">Welcome to {clubData.club.name}</h2>
         <p className="mt-3 text-lg font-normal text-white/40">Good {greeting}, {clubData.firstName} - here&apos;s your club overview.</p>
-        <div className="mt-8 h-px w-full bg-white/[0.06]" />
+        <div className="mt-4 h-px w-full bg-white/[0.06]" />
       </section>
 
-      <section className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden scrollbar-hide">
+      <section className="mt-4 flex flex-row gap-3 overflow-x-auto pb-1 scrollbar-hide md:hidden">
         {stats.map(([label, value]) => (
           <article key={label} className="flex min-w-[72px] flex-col items-center rounded-full border px-4 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
             <p className="text-lg font-bold leading-none" style={{ color: primaryColour }}>{value}</p>
@@ -87,11 +88,11 @@ export default async function ClubDashboardHomePage() {
         ))}
       </section>
 
-      <section className="mt-8 hidden gap-4 md:grid md:grid-cols-4">
+      <section className="mt-4 hidden gap-4 md:grid md:grid-cols-4">
         {stats.map(([label, value]) => (
-          <article key={label} className="rounded-2xl border p-7 transition-all duration-300 ease-out hover:-translate-y-0.5" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-            <p className="mb-3 text-xs uppercase tracking-[0.28em] text-white/30">Total {label}</p>
-            <p className="text-4xl font-black" style={{ color: primaryColour }}>{value}</p>
+          <article key={label} className="max-h-[100px] rounded-2xl border p-4 transition-all duration-300 ease-out hover:-translate-y-0.5" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <p className="text-xs uppercase tracking-[0.22em] text-white/30">Total {label}</p>
+            <p className="mt-2 text-3xl font-black leading-none" style={{ color: primaryColour }}>{value}</p>
           </article>
         ))}
       </section>
@@ -120,23 +121,7 @@ export default async function ClubDashboardHomePage() {
         {clubData.teams.length === 0 ? <p className="py-12 text-center text-gray-500">No teams yet.</p> : <ClubTeamScroller teams={clubData.teams} clubId={clubData.club.id} clubName={clubData.club.name} primaryColour={primaryColour} contrastText={contrastText} />}
       </section>
 
-      <section className="mt-12">
-        <details className="group">
-          <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
-            <div className="flex items-center gap-3"><h3 className="text-2xl font-bold text-white">Fixtures</h3><span className="text-lg text-white/35 transition-all duration-300 ease-out group-open:rotate-180">v</span></div>
-            <Link href="/dashboard/club/fixtures/import" className="rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg transition-all duration-300 ease-out hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${primaryColour}, ${darkerPrimary})`, color: contrastText, boxShadow: `0 4px 20px ${primaryColour}59` }}>Import Fixtures</Link>
-          </summary>
-          <div className="mt-6 space-y-3">
-            {clubData.fixtures.length === 0 ? <p className="py-8 text-center text-gray-500">No fixtures scheduled.</p> : clubData.fixtures.map((fixture) => (
-              <div key={fixture.id} className="grid grid-cols-1 gap-y-2 rounded-[10px] border px-5 py-3.5 text-sm transition-all duration-300 ease-out hover:bg-white/[0.04] sm:grid-cols-3 sm:items-center" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)', borderLeft: `3px solid ${primaryColour}` }}>
-                <span className="font-semibold" style={{ color: primaryColour }}>{new Date(fixture.fixture_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
-                <span className="text-white">{fixture.opponent}</span>
-                <span className="text-white/35">{fixture.team_name}</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      </section>
+      <ClubFixturesPanel fixtures={clubData.fixtures} primaryColour={primaryColour} darkerPrimary={darkerPrimary} contrastText={contrastText} />
     </div>
   );
 }
