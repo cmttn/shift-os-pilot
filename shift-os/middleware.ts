@@ -1,9 +1,26 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-type MembershipLookup = { club_role: string };
+type ClubMembership = {
+  club_role: string | null;
+  club_id: string | null;
+};
 
 const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup', '/auth/callback'];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/poll/') || pathname.startsWith('/api/');
+}
+
+function redirectTo(request: NextRequest, pathname: string): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  return NextResponse.redirect(url);
+}
+
+function isOnRoute(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({
@@ -12,9 +29,13 @@ export async function middleware(request: NextRequest) {
     }
   });
 
+  const pathname = request.nextUrl.pathname;
+  if (isPublicRoute(pathname)) {
+    return response;
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     return response;
@@ -38,70 +59,54 @@ export async function middleware(request: NextRequest) {
     data: { session }
   } = await supabase.auth.getSession();
 
-  const pathname = request.nextUrl.pathname;
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-
-  if (!session && !isPublicRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
+  if (!session) {
+    return redirectTo(request, '/');
   }
 
-  if (session && (pathname === '/auth/login' || pathname === '/auth/signup')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+  const { data: membership } = await supabase
+    .from('club_members')
+    .select('club_role, club_id')
+    .eq('user_id', session.user.id)
+    .eq('is_active', true)
+    .order('joined_at', { ascending: true })
+    .limit(1)
+    .single<ClubMembership>();
+
+  const clubRole = membership?.club_role ?? null;
+  console.log('[middleware] clubRole', clubRole, 'user', session.user.id, 'path', pathname);
+
+  if (clubRole === 'admin') {
+    return isOnRoute(pathname, '/dashboard/club') ? response : redirectTo(request, '/dashboard/club');
   }
 
-  if (session) {
-    const { data: membership } = await supabase
-      .from('club_members')
-      .select('club_role')
-      .eq('user_id', session.user.id)
-      .eq('is_active', true)
-      .maybeSingle<MembershipLookup>();
+  if (clubRole === 'coach') {
+    return isOnRoute(pathname, '/dashboard/coach') ? response : redirectTo(request, '/dashboard/coach');
+  }
 
-    const intendedRole = typeof session.user.user_metadata.intended_role === 'string' ? session.user.user_metadata.intended_role : '';
-    const inviteToken = typeof session.user.user_metadata.invite_token === 'string' ? session.user.user_metadata.invite_token : '';
+  if (clubRole === 'parent') {
+    return isOnRoute(pathname, '/dashboard/parent') ? response : redirectTo(request, '/dashboard/parent');
+  }
 
-    if (!membership) {
-      const url = request.nextUrl.clone();
-      if (intendedRole === 'coach' && !inviteToken) url.pathname = '/dashboard/coach/welcome';
-      else if (intendedRole === 'club_admin') url.pathname = '/onboarding';
-      else if (intendedRole === 'player') url.pathname = '/dashboard/player/welcome';
-      else url.pathname = '/onboarding';
-      if (pathname !== url.pathname) return NextResponse.redirect(url);
-      return response;
+  if (clubRole === 'player') {
+    return isOnRoute(pathname, '/dashboard/player') ? response : redirectTo(request, '/dashboard/player');
+  }
+
+  if (clubRole === null) {
+    const intendedRole = typeof session.user.user_metadata?.intended_role === 'string' ? session.user.user_metadata.intended_role : null;
+
+    if (intendedRole === 'coach') {
+      return isOnRoute(pathname, '/dashboard/coach/welcome') ? response : redirectTo(request, '/dashboard/coach/welcome');
     }
 
-    const role = membership.club_role;
-    if (role === 'admin') {
-      if (pathname === '/dashboard' || (pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/club'))) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/dashboard/club';
-        return NextResponse.redirect(url);
-      }
+    if (intendedRole === 'club_admin') {
+      return pathname === '/onboarding' ? response : redirectTo(request, '/onboarding');
     }
 
-    if (role === 'coach') {
-      if (pathname === '/dashboard' || pathname.startsWith('/dashboard/club')) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/dashboard/coach';
-        return NextResponse.redirect(url);
-      }
+    if (intendedRole === 'player') {
+      return isOnRoute(pathname, '/dashboard/player/welcome') ? response : redirectTo(request, '/dashboard/player/welcome');
     }
 
-    if (role === 'parent' && (pathname === '/dashboard' || pathname.startsWith('/dashboard/club') || pathname.startsWith('/dashboard/coach'))) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/dashboard/parent';
-      return NextResponse.redirect(url);
-    }
-
-    if (role === 'player' && pathname === '/dashboard') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/dashboard/player/welcome';
-      return NextResponse.redirect(url);
-    }
+    return pathname === '/onboarding' ? response : redirectTo(request, '/onboarding');
   }
 
   return response;
