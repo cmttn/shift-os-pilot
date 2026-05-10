@@ -12,6 +12,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     searchParams.get('message') === 'confirm-failed' ? 'We could not confirm that email link. Please try signing in or request a new link.' : null
@@ -26,6 +27,11 @@ function LoginForm() {
 
     const supabase = createClient();
     const normalizedEmail = email.trim().toLowerCase();
+    if (rememberMe) {
+      sessionStorage.removeItem('shift-os-no-persist');
+    } else {
+      sessionStorage.setItem('shift-os-no-persist', 'true');
+    }
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
       password
@@ -70,6 +76,14 @@ function LoginForm() {
           <input disabled={loading} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none transition focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-70" />
           <input disabled={loading} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none transition focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-70" />
 
+          <label className="flex items-center gap-3">
+            <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border transition-all duration-300 ease-out" style={rememberMe ? { backgroundColor: '#00C851', borderColor: '#00C851' } : { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.2)' }}>
+              {rememberMe ? <span className="text-xs font-black text-white">✓</span> : null}
+            </span>
+            <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} className="sr-only" />
+            <span className="text-sm text-white/50">Remember me on this device</span>
+          </label>
+
           {notice && <p className="rounded-lg border border-indigo-400/25 bg-indigo-400/10 px-4 py-3 text-sm text-indigo-100">{notice}</p>}
           {error && <p className="text-sm text-rose-400">{error}</p>}
 
@@ -91,6 +105,20 @@ function LoginForm() {
             Create account
           </Link>
         </p>
+        <div className="mt-6 border-t border-white/10 pt-4">
+          <p className="text-xs text-white/20">Dev shortcuts — Test accounts:</p>
+          <div className="mt-2 flex flex-wrap gap-3">
+            {[
+              ['Club Admin', 'cmttn@yahoo.co.uk'],
+              ['Coach', 'coach1test@shiftos.com'],
+              ['Parent', 'parent1test@shiftos.com']
+            ].map(([label, value]) => (
+              <button key={value} type="button" onClick={() => setEmail(value)} className="text-xs text-white/20 transition-all duration-300 ease-out hover:text-white/50">
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </main>
   );

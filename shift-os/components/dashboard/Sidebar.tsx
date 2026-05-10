@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { signOut } from '@/lib/auth/signOut';
 import type { ClubRecord } from '@/lib/dashboard/getClubData';
 
 function getContrastText(hexColour: string): string {
@@ -91,8 +91,7 @@ export default function Sidebar({ club }: SidebarProps) {
   const accentGlow = `${club.primary_colour}59`;
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await signOut();
     router.push('/');
     router.refresh();
   };

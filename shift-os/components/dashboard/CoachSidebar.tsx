@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from '@/lib/auth/signOut';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 
 interface CoachSidebarProps {
@@ -23,8 +24,14 @@ function initials(name: string): string {
 
 export default function CoachSidebar({ data }: CoachSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const team = data.teams[0] ?? null;
   const primaryColour = team?.club_primary_colour ?? '#00C851';
+  async function handleSignOut() {
+    await signOut();
+    router.push('/');
+    router.refresh();
+  }
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] flex-col border-r md:flex" style={{ background: 'linear-gradient(180deg,#0a0d14,#080a0f)', borderColor: 'rgba(255,255,255,0.06)' }}>
       <div className="p-7">
@@ -49,9 +56,7 @@ export default function CoachSidebar({ data }: CoachSidebarProps) {
           <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-black" style={{ backgroundColor: primaryColour, color: '#000000' }}>{initials(data.coach.full_name)}</span>
           <p className="min-w-0 truncate text-sm text-white/55">{data.coach.full_name}</p>
         </div>
-        <form action="/auth/signout" method="post" className="mt-5">
-          <button className="text-sm text-white/25 transition-all duration-300 ease-out hover:text-white">Sign out</button>
-        </form>
+        <button type="button" onClick={handleSignOut} className="mt-5 text-sm text-white/25 transition-all duration-300 ease-out hover:text-white">Sign out</button>
         <p className="mt-6 text-xs uppercase tracking-widest text-white/[0.12]">Powered by SHIFT/OS</p>
       </div>
     </aside>

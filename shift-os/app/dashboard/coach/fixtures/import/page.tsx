@@ -24,7 +24,7 @@ export default async function CoachFixtureImportPage() {
         { href: '/dashboard/coach/schedule', label: 'Schedule', icon: 'C' },
         { href: '/dashboard/coach/stats', label: 'Stats', icon: 'D' },
         { href: '/dashboard/coach/messages', label: 'Messages', icon: 'M' },
-        { href: '/dashboard/coach/profile', label: 'Profile', icon: 'P' }
+        { href: '/dashboard/coach/settings', label: 'Settings', icon: 'S' }
       ]} />
     </main>
   );

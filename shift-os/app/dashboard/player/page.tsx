@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BottomNav from '@/components/mobile/BottomNav';
 
 export default function PlayerDashboardHoldingPage() {
   return (
@@ -11,6 +12,11 @@ export default function PlayerDashboardHoldingPage() {
           Back to Join Code
         </Link>
       </section>
+      <BottomNav primaryColour="#00C851" items={[
+        { href: '/dashboard/player', label: 'Home', icon: 'H' },
+        { href: '/dashboard/player/welcome', label: 'Join', icon: 'J' },
+        { href: '/dashboard/player/settings', label: 'Settings', icon: 'S' }
+      ]} />
     </main>
   );
 }

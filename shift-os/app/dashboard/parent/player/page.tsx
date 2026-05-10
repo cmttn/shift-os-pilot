@@ -81,7 +81,13 @@ export default async function ParentDashboardPage() {
           ))}
         </section>
       </div>
-      <BottomNav primaryColour={primaryColour} items={[{ href: '/dashboard/parent/player', label: 'Home', icon: '⌂' }, { href: '/dashboard/parent/player', label: 'Fixtures', icon: '◷' }, { href: '/dashboard/parent/player', label: 'Avail', icon: '✓' }, { href: '/dashboard/parent/player', label: 'Team', icon: '▣' }]} />
+      <BottomNav primaryColour={primaryColour} items={[
+        { href: '/dashboard/parent/player', label: 'Home', icon: 'H' },
+        { href: '/dashboard/parent/player', label: 'Fixtures', icon: 'F' },
+        { href: '/dashboard/parent/player', label: 'Avail', icon: 'A' },
+        { href: '/dashboard/parent/player', label: 'Team', icon: 'T' },
+        { href: '/dashboard/parent/settings', label: 'Settings', icon: 'S' }
+      ]} />
     </main>
   );
 }
