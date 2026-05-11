@@ -81,8 +81,9 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
 
   useEffect(() => {
     const supabase = createClient();
+    const channelName = `parent-notes-${team.team_id}-${playerId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`parent-notes-${team.team_id}`)
+      .channel(channelName)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `team_id=eq.${team.team_id}` }, (payload) => {
         const next = payload.new as { id?: string; coach_notes?: string | null };
         setSessions((current) => current.map((item) => item.id === next.id ? { ...item, coach_notes: next.coach_notes ?? null } : item));
@@ -92,7 +93,7 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [team.team_id]);
+  }, [playerId, team.team_id]);
 
   async function updateAvailability(session: ParentSession, status: 'available' | 'unavailable') {
     if (session.my_availability === 'week_off') return;
