@@ -32,7 +32,7 @@ const roles: RoleCard[] = [
 export default function HomePage() {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-6 py-12 text-slate-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.18),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(99,102,241,0.18),transparent_36%),radial-gradient(circle_at_50%_100%,rgba(14,165,233,0.1),transparent_45%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(56,189,248,0.16),transparent_35%),radial-gradient(circle_at_85%_5%,rgba(99,102,241,0.15),transparent_40%),radial-gradient(circle_at_50%_100%,rgba(14,165,233,0.08),transparent_48%)]" />
 
       <section className="relative z-10 mx-auto w-full max-w-6xl">
         <div className="mx-auto max-w-3xl text-center">
@@ -46,7 +46,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {roles.map((role) => (
             <Link
               key={role.title}
