@@ -90,9 +90,11 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
   const team = player.teams.find((item) => item.team_id === params.teamId);
   if (!team) redirect('/dashboard/parent');
 
-  const singleContext = data.players.length === 1 && player.teams.length === 1;
+  const hasMultiplePlayers = data.players.length > 1;
+  const hasMultipleTeams = player.teams.length > 1;
+  const singleContext = !hasMultiplePlayers && !hasMultipleTeams;
   const heroSession = team.upcoming_sessions[0] ?? null;
-  const backHref = player.teams.length > 1 ? `/dashboard/parent/player/${player.id}` : '/dashboard/parent';
+  const backUrl = hasMultipleTeams ? `/dashboard/parent/player/${player.id}` : '/dashboard/parent';
   const supabase = await createClient();
   const since = new Date(Date.now() - 7 * 86400000).toISOString();
   const [{ data: latestPotm }, { data: playerPotm }] = await Promise.all([
@@ -172,7 +174,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
   return (
     <main className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
       <header className="hidden h-16 items-center justify-between border-b px-8 md:flex" style={{ backgroundColor: 'rgba(8,10,15,0.95)', borderColor: 'rgba(255,255,255,0.06)' }}>
-        <Link href={backHref} className="text-sm text-white/45 transition-all duration-300 ease-out hover:text-white">← Back</Link>
+        <Link href={backUrl} className="text-sm text-white/45 transition-all duration-300 ease-out hover:text-white">← Back</Link>
         <div className="flex items-center gap-3">
           {team.club_badge_url ? (
             <img src={team.club_badge_url} alt="" className="h-10 w-10 rounded-full object-cover" />
@@ -190,7 +192,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
       <section className="px-5 pb-24 pt-5 md:hidden">
         <div className="mx-auto max-w-[480px]">
           <header className="flex items-center gap-3">
-            <Link href={backHref} className="text-sm text-white/45 transition-all duration-300 ease-out hover:text-white">← Back</Link>
+            <Link href={backUrl} className="text-sm text-white/45 transition-all duration-300 ease-out hover:text-white">← Back</Link>
             <div className="ml-auto flex items-center gap-3">
               {team.club_badge_url ? <img src={team.club_badge_url} alt="" className="h-10 w-10 rounded-full object-cover" /> : <span className="h-10 w-10 rounded-full" style={{ backgroundColor: team.club_primary_colour }} />}
               <span className="text-right">
