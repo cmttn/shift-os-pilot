@@ -176,7 +176,7 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
   const playerRows = (playersRes.data ?? []) as RawPlayer[];
   const profile = profileRes.data as RawProfile | null;
   const profileName = profile?.full_name?.trim() ?? '';
-  const parentFirstName = profileName.length > 0 ? profileName.split(' ')[0] : session.user.email?.split('@')[0] ?? 'there';
+  const parentFirstName = profileName.length > 0 ? profileName.split(' ')[0] : 'there';
 
   const teamIds = Array.from(new Set(playerRows.map((player) => player.team_id).filter((teamId): teamId is string => Boolean(teamId))));
   const { data: teamRowsData } = teamIds.length > 0

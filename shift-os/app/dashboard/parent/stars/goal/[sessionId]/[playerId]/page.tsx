@@ -16,6 +16,7 @@ interface SessionRow {
 
 interface PlayerRow {
   id: string;
+  team_id: string | null;
   first_name: string | null;
   last_name: string | null;
   parent_user_id: string | null;
@@ -77,10 +78,10 @@ export default function StarGoalPage() {
       }
       const [{ data: sessionData }, { data: playerData }, { data: goalData }] = await Promise.all([
         supabase.from('sessions').select('id,team_id,opponent,title,session_date').eq('id', params.sessionId).maybeSingle<SessionRow>(),
-        supabase.from('players').select('id,first_name,last_name,parent_user_id').eq('id', params.playerId).eq('parent_user_id', user.id).maybeSingle<PlayerRow>(),
+        supabase.from('players').select('id,team_id,first_name,last_name,parent_user_id').eq('id', params.playerId).eq('parent_user_id', user.id).maybeSingle<PlayerRow>(),
         supabase.from('player_star_goals').select('category,custom_text,parent_message').eq('session_id', params.sessionId).eq('player_id', params.playerId).maybeSingle<GoalRow>()
       ]);
-      if (!sessionData || !playerData) {
+      if (!sessionData || !playerData || sessionData.team_id !== playerData.team_id) {
         setError('Goal not found for this player.');
         return;
       }
