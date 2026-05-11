@@ -7,12 +7,13 @@ import { createClient } from '@/lib/supabase/client';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 
 const tools = [
-  ['game_time_tracker', 'Game Time Tracker', 'Free'],
-  ['availability_manager', 'Availability Manager', 'Free'],
-  ['announcement_builder', 'Announcement Builder', 'Free'],
-  ['fair_play_reports', 'Fair Play Reports', 'Pro'],
-  ['structured_conversations', 'Structured Conversations', 'Pro'],
-  ['parent_engagement', 'Parent Engagement', 'Pro']
+  ['game_time_tracker', 'Game Time Tracker', 'Free', 'Track minutes played per player', '/dashboard/coach'],
+  ['availability_manager', 'Availability Manager', 'Free', 'Send polls and track player availability', '/dashboard/coach/schedule'],
+  ['announcement_builder', 'Announcement Builder', 'Free', 'Send updates to coaches and parents', '/dashboard/coach/messages'],
+  ['fair_play_reports', 'Fair Play Reports', 'Pro', 'Full game time reports', '/dashboard/coach/stats'],
+  ['structured_conversations', 'Structured Conversations', 'Pro', 'Structured ticket workflows', '/dashboard/coach/tickets'],
+  ['parent_engagement', 'Parent Engagement', 'Pro', 'Track parent response rates', '/dashboard/coach/stats'],
+  ['potm', 'Player of the Match', 'Pro (unlocked for testing)', 'Run automated POTM polls and generate social cards', '/dashboard/coach/tools/potm']
 ] as const;
 
 interface CoachDashboardClientProps {
@@ -87,6 +88,7 @@ function formatCompactSessionDate(value: string): string {
 export default function CoachDashboardClient({ data }: CoachDashboardClientProps) {
   const [activeTeamId, setActiveTeamId] = useState(data.activeTeamId);
   const [recentPotm, setRecentPotm] = useState<RecentPotm | null>(null);
+  const [unviewedTicketCount, setUnviewedTicketCount] = useState(0);
   const activeTeam = data.teams.find((team) => team.id === activeTeamId) ?? data.teams[0] ?? null;
   const primaryColour = activeTeam?.club_primary_colour ?? '#00C851';
   const contrastText = getContrastText(primaryColour);
@@ -132,6 +134,20 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
     void loadRecentPotm();
   }, [activeTeam?.id]);
 
+  useEffect(() => {
+    async function loadTicketCount() {
+      const supabase = createClient();
+      const { count } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('coach_recipient_id', data.coach.id)
+        .eq('is_safeguarding', false)
+        .eq('status', 'open');
+      setUnviewedTicketCount(count ?? 0);
+    }
+    void loadTicketCount();
+  }, [data.coach.id]);
+
   return (
     <main className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
       <div className="mx-auto min-h-screen max-w-[480px] pb-[84px] md:ml-[260px] md:max-w-[900px] md:px-8 md:pb-12">
@@ -155,7 +171,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
             </div>
           ) : null}
           {nextFixture ? (
-            <Link href={`/dashboard/coach/sessions/${nextFixture.id}`} className="mb-8 block max-h-[180px] overflow-hidden rounded-2xl p-4 text-white shadow-2xl transition-all duration-300 ease-out hover:-translate-y-0.5 md:max-h-none md:p-5" style={{ background: `linear-gradient(135deg, ${primaryColour} 0%, #06100a 100%)` }}>
+            <section className="mb-8 block max-h-[220px] overflow-hidden rounded-2xl p-4 text-white shadow-2xl transition-all duration-300 ease-out hover:-translate-y-0.5 md:max-h-none md:p-5" style={{ background: `linear-gradient(135deg, ${primaryColour} 0%, #06100a 100%)` }}>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">Next {nextFixture.type}</p>
               <h1 className="mt-2 truncate text-lg font-bold md:mt-3 md:text-2xl md:font-black">{activeTeam?.name} {nextFixture.opponent ? `v ${nextFixture.opponent}` : nextFixture.title ?? ''}</h1>
               <p className="mt-1 text-sm text-white/75 md:hidden">{formatCompactSessionDate(nextFixture.session_date)}</p>
@@ -168,8 +184,11 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
                 <p className="text-sm text-white/70">{nextFixture.available_count} of {teamPlayers.length} available</p>
                 <p className="mt-1 text-xs text-white/65 md:hidden">✓ {nextFixture.available_count} &nbsp; × {nextFixture.unavailable_count} &nbsp; ? {nextFixture.pending_count}</p>
               </div>
-              {!nextFixture.poll_sent ? <span className="mt-3 inline-block rounded-full bg-white px-4 py-2 text-sm font-semibold md:mt-4" style={{ color: primaryColour }}>Send Availability Poll</span> : null}
-            </Link>
+              <div className="mt-3 flex flex-wrap gap-2 md:mt-4">
+                <Link href={`/dashboard/coach/sessions/${nextFixture.id}`} className="inline-block rounded-full bg-white px-4 py-2 text-sm font-semibold" style={{ color: primaryColour }}>{nextFixture.poll_sent ? 'View Responses' : 'Send Availability Poll'}</Link>
+                {nextFixture.type === 'match' ? <Link href={`/dashboard/coach/sessions/${nextFixture.id}/potm`} className="inline-block rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white">POTM Poll</Link> : null}
+              </div>
+            </section>
           ) : null}
 
           <section className="md:hidden">
@@ -254,15 +273,15 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
             <h2 className="text-2xl font-bold text-white">Your Tools</h2>
             <p className="mt-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-white/40">{isClubManaged ? `Tools managed by ${clubName}` : 'Manage your own tools'}</p>
             <div className="mt-4 space-y-3">
-              {tools.map(([key, name, tier]) => {
-                const enabled = isClubManaged ? data.enabledFeatures.includes(key) : true;
+              {tools.map(([key, name, tier, description, href]) => {
+                const enabled = key === 'potm' ? true : isClubManaged ? data.enabledFeatures.includes(key) : true;
                 return (
-                  <article key={key} className={`rounded-xl border p-4 transition-all duration-300 ease-out ${enabled ? '' : 'opacity-45'}`} style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <Link href={href} key={key} className={`block rounded-xl border p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 ${enabled ? '' : 'opacity-45'}`} style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
                     <div className="flex items-center justify-between gap-3">
-                      <div><p className="font-semibold text-white">{name}</p><p className="text-xs text-white/35">{tier}</p></div>
+                      <div><p className="font-semibold text-white">{key === 'potm' ? 'Player of the Match' : name}</p><p className="text-xs text-white/35">{description}</p><p className="mt-1 text-xs text-white/25">{tier}</p></div>
                       <span className="text-xs text-white/40">{enabled ? (isClubManaged ? `Enabled by ${clubName}` : 'Enabled') : 'Not enabled by your club'}</span>
                     </div>
-                  </article>
+                  </Link>
                 );
               })}
             </div>
@@ -273,7 +292,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
         { href: '/dashboard/coach', label: 'Squad', icon: 'S' },
         { href: '/dashboard/coach/schedule', label: 'Schedule', icon: 'C' },
         { href: '/dashboard/coach/stats', label: 'Stats', icon: 'D' },
-        { href: '/dashboard/coach/tickets', label: 'Tickets', icon: 'T' },
+        { href: '/dashboard/coach/tickets', label: 'Tickets', icon: 'T', badgeCount: unviewedTicketCount },
         { href: '/dashboard/coach/profile', label: 'Profile', icon: 'P' }
       ]} />
     </main>

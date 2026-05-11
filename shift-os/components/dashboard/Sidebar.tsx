@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { signOut } from '@/lib/auth/signOut';
 import type { ClubRecord } from '@/lib/dashboard/getClubData';
+import { createClient } from '@/lib/supabase/client';
 
 function getContrastText(hexColour: string): string {
   const hex = hexColour.replace('#', '');
@@ -91,6 +92,7 @@ export default function Sidebar({ club }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [ticketCount, setTicketCount] = useState(0);
   const initials = club.name
     .split(' ')
     .map((word) => word[0])
@@ -113,6 +115,19 @@ export default function Sidebar({ club }: SidebarProps) {
       document.body.style.overflow = '';
     };
   }, [open]);
+
+  useEffect(() => {
+    async function loadTicketCount() {
+      const { count } = await createClient()
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('club_id', club.id)
+        .neq('status', 'resolved')
+        .or('priority.eq.urgent,is_safeguarding.eq.true');
+      setTicketCount(count ?? 0);
+    }
+    void loadTicketCount();
+  }, [club.id]);
 
   return (
     <>
@@ -188,10 +203,11 @@ export default function Sidebar({ club }: SidebarProps) {
                 }
               >
                 <span
-                  className="flex h-5 w-5 items-center justify-center text-xs font-black transition-all duration-300 ease-out group-hover:text-white"
+                  className="relative flex h-5 w-5 items-center justify-center text-xs font-black transition-all duration-300 ease-out group-hover:text-white"
                   style={active ? { color: club.primary_colour } : { color: 'rgba(255,255,255,0.35)' }}
                 >
                   {item.icon}
+                  {item.label === 'Tickets' && ticketCount > 0 ? <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">{ticketCount > 9 ? '9+' : ticketCount}</span> : null}
                 </span>
                 <span className={`transition-all duration-300 ease-out group-hover:text-white ${active ? 'font-semibold' : ''}`}>{item.label}</span>
               </Link>

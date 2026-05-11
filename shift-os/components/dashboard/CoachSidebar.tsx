@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { signOut } from '@/lib/auth/signOut';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
+import { createClient } from '@/lib/supabase/client';
 
 interface CoachSidebarProps {
   data: CoachDashboardData;
@@ -22,9 +24,17 @@ function initials(name: string): string {
   return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'CO';
 }
 
+function NavIcon({ label }: { label: string }) {
+  if (label === 'Tickets') {
+    return <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" /></svg>;
+  }
+  return <span>{label[0]}</span>;
+}
+
 export default function CoachSidebar({ data }: CoachSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [unviewedTicketCount, setUnviewedTicketCount] = useState(0);
   const team = data.teams[0] ?? null;
   const primaryColour = team?.club_primary_colour ?? '#00C851';
   async function handleSignOut() {
@@ -32,6 +42,19 @@ export default function CoachSidebar({ data }: CoachSidebarProps) {
     router.push('/');
     router.refresh();
   }
+  useEffect(() => {
+    async function loadTicketCount() {
+      const { count } = await createClient()
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('coach_recipient_id', data.coach.id)
+        .eq('is_safeguarding', false)
+        .eq('status', 'open');
+      setUnviewedTicketCount(count ?? 0);
+    }
+    void loadTicketCount();
+  }, [data.coach.id]);
+
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] flex-col border-r md:flex" style={{ background: 'linear-gradient(180deg,#0a0d14,#080a0f)', borderColor: 'rgba(255,255,255,0.06)' }}>
       <div className="p-7">
@@ -45,7 +68,10 @@ export default function CoachSidebar({ data }: CoachSidebarProps) {
           const isActive = href === '/dashboard/coach' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link key={href} href={href} className="mb-1 flex items-center gap-3 rounded-[10px] px-4 py-3 text-sm text-white/45 transition-all duration-300 ease-out hover:translate-x-1 hover:bg-white/[0.04] hover:text-white" style={isActive ? { backgroundColor: `${primaryColour}1f`, borderLeft: `2px solid ${primaryColour}`, color: '#ffffff' } : undefined}>
-              <span className="flex h-[18px] w-[18px] items-center justify-center text-xs font-black" style={{ color: isActive ? primaryColour : 'rgba(255,255,255,0.35)' }}>{label[0]}</span>
+              <span className="relative flex h-[18px] w-[18px] items-center justify-center text-xs font-black" style={{ color: isActive ? primaryColour : 'rgba(255,255,255,0.35)' }}>
+                <NavIcon label={label} />
+                {label === 'Tickets' && unviewedTicketCount > 0 ? <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">{unviewedTicketCount > 9 ? '9+' : unviewedTicketCount}</span> : null}
+              </span>
               {label}
             </Link>
           );

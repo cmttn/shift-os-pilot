@@ -106,6 +106,16 @@ interface PollResponseCount {
   status: string | null;
 }
 
+const FREE_FEATURE_KEYS = ['game_time_tracker', 'availability_manager', 'announcement_builder'] as const;
+const COACH_FEATURE_KEYS = [
+  'game_time_tracker',
+  'availability_manager',
+  'announcement_builder',
+  'fair_play_reports',
+  'structured_conversations',
+  'parent_engagement'
+] as const;
+
 function getFirstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -235,11 +245,16 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
   const managedClubId = activeTeam?.club_id ?? null;
   const { data: featuresData } =
     managedClubId
-      ? await supabase.from('feature_toggles').select('feature_key,is_enabled').eq('club_id', managedClubId).eq('is_enabled', true)
+      ? await supabase.from('feature_toggles').select('feature_key,is_enabled').eq('club_id', managedClubId)
       : { data: [] as Array<{ feature_key: string | null; is_enabled: boolean | null }> };
+  const featureRows = featuresData ?? [];
   const enabledFeatures = isClubManaged
-    ? (featuresData ?? []).map((feature) => feature.feature_key).filter((feature): feature is string => Boolean(feature))
-    : ['game_time_tracker', 'availability_manager', 'announcement_builder', 'fair_play_reports', 'structured_conversations', 'parent_engagement'];
+    ? COACH_FEATURE_KEYS.filter((featureKey) => {
+        const toggle = featureRows.find((feature) => feature.feature_key === featureKey);
+        if (toggle) return Boolean(toggle.is_enabled);
+        return (FREE_FEATURE_KEYS as readonly string[]).includes(featureKey);
+      })
+    : [...COACH_FEATURE_KEYS];
 
   return {
     coach: { id: session.user.id, full_name: fullName, email: session.user.email ?? '' },

@@ -63,6 +63,15 @@ function statusColour(status: string): string {
   return '#f59e0b';
 }
 
+function displayAddress(session: { full_address: string | null; postcode: string | null; location: string | null }): string {
+  if (session.full_address) {
+    return session.postcode && !session.full_address.includes(session.postcode)
+      ? `${session.full_address}, ${session.postcode}`
+      : session.full_address;
+  }
+  return session.location ?? 'TBC';
+}
+
 export default function SessionDetailClient({ data }: SessionDetailClientProps) {
   const [responses, setResponses] = useState(data.responses);
   const [weekOffIds, setWeekOffIds] = useState<string[]>(data.responses.filter((response) => response.status === 'week_off').map((response) => response.player_id));
@@ -94,7 +103,7 @@ export default function SessionDetailClient({ data }: SessionDetailClientProps) 
       hour: '2-digit',
       minute: '2-digit'
     });
-    const location = data.session.full_address || data.session.location || 'TBC';
+    const location = displayAddress(data.session);
 
     return `📋 *Availability Check — ${data.team.name}*
 
@@ -172,22 +181,23 @@ _Powered by Shift OS_`;
   }
 
   return (
-    <main className="min-h-screen px-5 pb-[112px] pt-8 text-white" style={{ backgroundColor: '#080a0f' }}>
-      <div className="mx-auto max-w-[480px]">
+    <main className="min-h-screen px-5 pb-[112px] pt-8 text-white md:ml-[260px] md:pb-10" style={{ backgroundColor: '#080a0f' }}>
+      <div className="mx-auto max-w-[480px] md:max-w-[1040px]">
         <Link href="/dashboard/coach" className="text-sm text-white/40 transition-all duration-300 ease-out hover:text-white">Back</Link>
         <section className="mt-5 rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <span className="rounded-full px-3 py-1 text-xs font-semibold uppercase" style={{ backgroundColor: `${primaryColour}26`, color: primaryColour }}>{data.session.type}</span>
           <h1 className="mt-4 text-3xl font-black">{data.session.opponent ? `vs ${data.session.opponent}` : data.session.title ?? data.session.type}</h1>
           <p className="mt-2 text-sm text-white/40">{formatDate(data.session.session_date)}</p>
-          <p className="mt-1 text-sm text-white/40">{data.session.full_address || data.session.location || 'Location TBC'}{data.session.postcode ? `, ${data.session.postcode}` : ''}</p>
+          <p className="mt-1 text-sm text-white/40">{displayAddress(data.session)}</p>
           {data.session.opposition_contact_name || data.session.opposition_contact_phone ? <p className="mt-1 text-sm text-white/40">Contact: {[data.session.opposition_contact_name, data.session.opposition_contact_phone].filter(Boolean).join(' - ')}</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             {data.session.tournify_link ? <a href={data.session.tournify_link} target="_blank" rel="noreferrer" className="inline-block rounded-full border border-white/10 px-4 py-2 text-sm text-white">View Bracket</a> : null}
-            <Link href={`/dashboard/coach/sessions/${data.session.id}/playtime`} className="inline-block rounded-full px-4 py-2 text-sm font-semibold text-black" style={{ backgroundColor: primaryColour }}>Playtime</Link>
-            {data.session.type === 'match' ? <Link href={`/dashboard/coach/sessions/${data.session.id}/potm`} className="inline-block rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-200">POTM</Link> : null}
+            <Link href={`/dashboard/coach/sessions/${data.session.id}/playtime`} className="inline-block rounded-full px-4 py-2 text-sm font-semibold text-black" style={{ backgroundColor: primaryColour }}>Playtime Calculator</Link>
+            {data.session.type === 'match' ? <Link href={`/dashboard/coach/sessions/${data.session.id}/potm`} className="inline-block rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-200">POTM Poll</Link> : null}
           </div>
         </section>
 
+        <div className="md:grid md:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] md:gap-5">
         <section className="mt-5 rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-bold">Coach notes</h2>
@@ -230,11 +240,12 @@ _Powered by Shift OS_`;
             );
           })}
         </section>
+        </div>
         {error ? <p className="mt-4 text-sm text-red-200">{error}</p> : null}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-xl" style={{ backgroundColor: 'rgba(8,10,15,0.95)', borderColor: 'rgba(255,255,255,0.06)' }}>
-        <div className="mx-auto flex max-w-[480px] items-center gap-2">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t p-4 backdrop-blur-xl md:left-[260px]" style={{ backgroundColor: 'rgba(8,10,15,0.95)', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="mx-auto flex max-w-[1040px] items-center gap-2">
           {!pollSent ? (
             <button type="button" onClick={sendPoll} className="w-full rounded-full px-6 py-3 font-semibold text-white" style={{ backgroundColor: primaryColour }}>Send Availability Poll</button>
           ) : (
