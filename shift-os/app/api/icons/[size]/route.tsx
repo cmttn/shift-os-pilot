@@ -1,14 +1,18 @@
 import { ImageResponse } from 'next/og';
 import { NextResponse, type NextRequest } from 'next/server';
 
+export const runtime = 'edge';
+
 const supportedSizes = new Set(['192', '512']);
 
-export function GET(_request: NextRequest, { params }: { params: { size: string } }) {
-  if (!supportedSizes.has(params.size)) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ size: string }> }) {
+  const { size: sizeParam } = await params;
+
+  if (!supportedSizes.has(sizeParam)) {
     return NextResponse.json({ error: 'Unsupported icon size' }, { status: 404 });
   }
 
-  const size = Number(params.size);
+  const size = Number(sizeParam);
 
   return new ImageResponse(
     (
