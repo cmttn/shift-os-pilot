@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { calculatePotmWinner, resolvePotmMessage, type ClubPotmSettings, type CoachPotmSettings, type PotmVote } from '@/lib/tools/potmCalculator';
+import { awardStars } from '@/lib/tools/starAwarder';
 
 interface ClosePayload {
   pollId: string;
@@ -17,6 +18,7 @@ interface PlayerRow {
   id: string;
   first_name: string | null;
   last_name: string | null;
+  parent_user_id: string | null;
 }
 
 interface SessionRow {
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
   if (!winner.winner_player_id) return NextResponse.json({ error: 'Unable to calculate winner' }, { status: 400 });
 
   const [{ data: player }, { data: session }, { data: team }] = await Promise.all([
-    supabase.from('players').select('id,first_name,last_name').eq('id', winner.winner_player_id).maybeSingle<PlayerRow>(),
+    supabase.from('players').select('id,first_name,last_name,parent_user_id').eq('id', winner.winner_player_id).maybeSingle<PlayerRow>(),
     supabase.from('sessions').select('id,opponent,title').eq('id', poll.session_id).maybeSingle<SessionRow>(),
     supabase.from('teams').select('id,name,club_id').eq('id', poll.team_id).maybeSingle<TeamRow>()
   ]);
@@ -84,6 +86,18 @@ export async function POST(request: Request) {
     await supabase.from('potm_stats').insert({ player_id: winner.winner_player_id, team_id: poll.team_id, club_id: team.club_id, potm_count: 1, last_won_at: new Date().toISOString(), last_session_id: poll.session_id });
   }
 
+  if (player.parent_user_id) {
+    await awardStars({
+      player_id: player.id,
+      parent_user_id: player.parent_user_id,
+      session_id: poll.session_id,
+      stars: 10,
+      category: 'potm',
+      parent_message: null,
+      supabase
+    });
+  }
+
   const cardResponse = await fetch(new URL('/api/potm-card', request.url), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -101,7 +115,7 @@ export async function POST(request: Request) {
       session_id: poll.session_id,
       team_id: poll.team_id,
       title: '🏆 Player of the Match Result!',
-      message: `${winnerName} wins POTM for ${team.name} vs ${session.opponent ?? session.title ?? 'today'}!`,
+      message: `${winnerName} wins POTM for ${team.name} vs ${session.opponent ?? session.title ?? 'today'}! POTM + 10 Stars!`,
       audience: 'team'
     })
   });

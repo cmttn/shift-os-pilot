@@ -7,6 +7,14 @@
     {
       "path": "/api/potm-cron",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/stars-season-reset",
+      "schedule": "0 0 1 7 *"
+    },
+    {
+      "path": "/api/stars-season-start",
+      "schedule": "0 0 1 9 *"
     }
   ]
 }
