@@ -7,6 +7,7 @@ interface BottomNavItem {
   href: string;
   label: string;
   icon: string;
+  badgeCount?: number;
 }
 
 interface BottomNavProps {
@@ -28,6 +29,9 @@ function NavIcon({ label, fallback }: { label: string; fallback: string }) {
   if (key === 'messages') {
     return <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>;
   }
+  if (key === 'tickets') {
+    return <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 11h6" /><path d="M9 15h4" /><path d="M19 3H5a2 2 0 00-2 2v14l4-4h12a2 2 0 002-2V5a2 2 0 00-2-2z" /></svg>;
+  }
   if (key === 'profile' || key === 'settings' || key === 'team') {
     return <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
   }
@@ -45,7 +49,12 @@ export default function BottomNav({ primaryColour, items }: BottomNavProps) {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link key={item.href} href={item.href} className="flex flex-col items-center justify-center gap-1 text-xs transition-all duration-300 ease-out" style={{ color: active ? primaryColour : 'rgba(255,255,255,0.3)' }}>
-              <span className="flex h-5 items-center justify-center leading-none"><NavIcon label={item.label} fallback={item.icon} /></span>
+              <span className="relative flex h-5 items-center justify-center leading-none">
+                <NavIcon label={item.label} fallback={item.icon} />
+                {item.badgeCount && item.badgeCount > 0 ? (
+                  <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">{item.badgeCount > 9 ? '9+' : item.badgeCount}</span>
+                ) : null}
+              </span>
               <span>{item.label}</span>
             </Link>
           );

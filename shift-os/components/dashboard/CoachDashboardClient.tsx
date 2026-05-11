@@ -273,7 +273,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
         { href: '/dashboard/coach', label: 'Squad', icon: 'S' },
         { href: '/dashboard/coach/schedule', label: 'Schedule', icon: 'C' },
         { href: '/dashboard/coach/stats', label: 'Stats', icon: 'D' },
-        { href: '/dashboard/coach/messages', label: 'Messages', icon: 'M' },
+        { href: '/dashboard/coach/tickets', label: 'Tickets', icon: 'T' },
         { href: '/dashboard/coach/profile', label: 'Profile', icon: 'P' }
       ]} />
     </main>

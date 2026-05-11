@@ -13,7 +13,7 @@ const navItems = [
   ['Squad', '/dashboard/coach'],
   ['Schedule', '/dashboard/coach/schedule'],
   ['Stats', '/dashboard/coach/stats'],
-  ['Messages', '/dashboard/coach/messages'],
+  ['Tickets', '/dashboard/coach/tickets'],
   ['Profile', '/dashboard/coach/profile'],
   ['Settings', '/dashboard/coach/settings']
 ] as const;

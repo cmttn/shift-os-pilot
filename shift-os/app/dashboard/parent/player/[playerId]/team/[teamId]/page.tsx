@@ -132,6 +132,12 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
   const goalMeta = todayGoal ? getCategoryMeta(todayGoal.category) : null;
   const lastAwardMeta = lastAward ? getCategoryMeta(lastAward.category) : null;
   const starsTotal = starTotal?.total_stars ?? 0;
+  const { count: openTicketCount } = await supabase
+    .from('tickets')
+    .select('id', { count: 'exact', head: true })
+    .eq('raised_by', data.userId)
+    .eq('team_id', team.team_id)
+    .neq('status', 'resolved');
 
   const goalCard = todayGoal && todaySession && goalMeta ? (
     <section className="rounded-3xl border p-6 text-[#fff7ed] shadow-[0_0_24px_rgba(245,158,11,0.15)]" style={{ backgroundColor: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.4)' }}>
@@ -258,7 +264,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
         { href: `/dashboard/parent/player/${player.id}/team/${team.team_id}`, label: 'Home', icon: 'H' },
         { href: `/dashboard/parent/player/${player.id}/team/${team.team_id}`, label: 'Fixtures', icon: 'F' },
         { href: `/dashboard/parent/player/${player.id}/team/${team.team_id}`, label: 'Avail', icon: 'A' },
-        { href: `/dashboard/parent/player/${player.id}/team/${team.team_id}`, label: 'Team', icon: 'T' },
+        { href: '/dashboard/parent/tickets', label: 'Tickets', icon: 'T', badgeCount: openTicketCount ?? 0 },
         { href: '/dashboard/parent/settings', label: 'Settings', icon: 'S' }
       ]} /> : null}
     </main>

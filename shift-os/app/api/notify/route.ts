@@ -5,9 +5,10 @@ import { createServiceClient } from '@/lib/supabase/service';
 interface NotifyPayload {
   session_id: string;
   team_id: string;
+  club_id?: string;
   message: string;
   title: string;
-  audience?: 'coaches' | 'team';
+  audience?: 'coaches' | 'team' | 'club_admins' | 'ticket_raiser';
 }
 
 interface TeamCoachRow {
@@ -24,6 +25,14 @@ interface ParentUserRow {
   parent_user_id: string | null;
 }
 
+interface ClubAdminRow {
+  user_id: string;
+}
+
+interface TicketRaiserRow {
+  raised_by: string;
+}
+
 function isNotifyPayload(value: unknown): value is NotifyPayload {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
@@ -32,7 +41,8 @@ function isNotifyPayload(value: unknown): value is NotifyPayload {
     && typeof record.team_id === 'string'
     && typeof record.message === 'string'
     && typeof record.title === 'string'
-    && (audience === undefined || audience === 'coaches' || audience === 'team');
+    && (record.club_id === undefined || typeof record.club_id === 'string')
+    && (audience === undefined || audience === 'coaches' || audience === 'team' || audience === 'club_admins' || audience === 'ticket_raiser');
 }
 
 export async function POST(request: Request) {
@@ -50,13 +60,28 @@ export async function POST(request: Request) {
 
   webpush.setVapidDetails(subject, publicKey, privateKey);
   const supabase = createServiceClient();
-  const { data: coachesData } = await supabase.from('team_coaches').select('user_id').eq('team_id', payload.team_id);
+  const { data: coachesData } = payload.team_id
+    ? await supabase.from('team_coaches').select('user_id').eq('team_id', payload.team_id)
+    : { data: [] as TeamCoachRow[] };
   const coachIds = ((coachesData ?? []) as TeamCoachRow[]).map((coach) => coach.user_id);
   const { data: parentData } = payload.audience === 'team'
     ? await supabase.from('players').select('parent_user_id').eq('team_id', payload.team_id).eq('is_active', true)
     : { data: [] as ParentUserRow[] };
   const parentIds = ((parentData ?? []) as ParentUserRow[]).map((parent) => parent.parent_user_id).filter((id): id is string => Boolean(id));
-  const targetIds = Array.from(new Set(payload.audience === 'team' ? [...coachIds, ...parentIds] : coachIds));
+  const { data: adminData } = payload.audience === 'club_admins' && payload.club_id
+    ? await supabase.from('club_members').select('user_id').eq('club_id', payload.club_id).eq('club_role', 'admin').eq('is_active', true)
+    : { data: [] as ClubAdminRow[] };
+  const adminIds = ((adminData ?? []) as ClubAdminRow[]).map((admin) => admin.user_id);
+  const { data: ticketData } = payload.audience === 'ticket_raiser'
+    ? await supabase.from('tickets').select('raised_by').eq('id', payload.session_id).maybeSingle<TicketRaiserRow>()
+    : { data: null };
+  const ticketRaiserIds = ticketData?.raised_by ? [ticketData.raised_by] : [];
+  const targetIds = Array.from(new Set(
+    payload.audience === 'team' ? [...coachIds, ...parentIds]
+      : payload.audience === 'club_admins' ? adminIds
+        : payload.audience === 'ticket_raiser' ? ticketRaiserIds
+          : coachIds
+  ));
   const { data: subscriptionsData } =
     targetIds.length > 0
       ? await supabase.from('push_subscriptions').select('endpoint,p256dh,auth').in('user_id', targetIds)

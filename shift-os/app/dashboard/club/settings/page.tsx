@@ -31,6 +31,11 @@ export default async function ClubSettingsPage() {
           <Link href="/dashboard/club/settings/potm" className="mt-5 inline-flex rounded-full px-5 py-3 text-sm font-semibold text-black" style={{ backgroundColor: clubData.club.primary_colour }}>Manage POTM Settings</Link>
         </section>
         <section className="mt-6 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <h2 className="text-xl font-bold">Coach Recognition</h2>
+          <p className="mt-2 text-sm text-white/40">Set positive ticket thresholds and rewards for coach recognition.</p>
+          <Link href="/dashboard/club/settings/recognition" className="mt-5 inline-flex rounded-full px-5 py-3 text-sm font-semibold text-black" style={{ backgroundColor: clubData.club.primary_colour }}>Manage Recognition</Link>
+        </section>
+        <section className="mt-6 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <h2 className="text-xl font-bold">Session</h2>
           <div className="mt-5">
             <SignOutButton />
