@@ -74,6 +74,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
   const [playerName, setPlayerName] = useState('');
   const [ageGroup, setAgeGroup] = useState(teams[0]?.ageGroup ?? '');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [faFanNumber, setFaFanNumber] = useState('');
   const [guardianOneName, setGuardianOneName] = useState('');
   const [guardianOnePhone, setGuardianOnePhone] = useState('');
   const [guardianOneEmail, setGuardianOneEmail] = useState('');
@@ -122,6 +123,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
     setPlayerName('');
     setAgeGroup(teams[0]?.ageGroup ?? '');
     setDateOfBirth('');
+    setFaFanNumber('');
     setGuardianOneName('');
     setGuardianOnePhone('');
     setGuardianOneEmail('');
@@ -177,6 +179,8 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
             last_name: names.lastName,
             age_group: mode === 'invite' ? selectedTeam?.ageGroup ?? null : ageGroup,
             dob: mode === 'invite' ? null : dateOfBirth || null,
+            fa_fan_number: mode === 'new' && faFanNumber.trim() ? faFanNumber.trim() : null,
+            fa_fan_added_by: mode === 'new' && faFanNumber.trim() ? 'coach' : null,
             is_active: true,
             invite_token: inviteToken,
             invite_status: 'pending'
@@ -319,12 +323,26 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
                 ))}
               </select>
             </div>
-            <div>
-              <label className={labelClass}>Date of Birth</label>
-              <input type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} className={fieldClass} style={inputStyle} />
-            </div>
+          <div>
+            <label className={labelClass}>Date of Birth</label>
+            <input type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} className={fieldClass} style={inputStyle} />
           </div>
-        )}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-white">FA Registration Number (FAN)</label>
+            <p className="mb-2 mt-0.5 text-xs text-white/40">Optional — you can ask the parent to add this later</p>
+            <input
+              type="text"
+              name="fa_fan_number"
+              value={faFanNumber}
+              onChange={(event) => setFaFanNumber(event.target.value)}
+              className={fieldClass}
+              style={inputStyle}
+              placeholder="e.g. 67618567"
+            />
+            <p className="mt-1.5 text-xs text-white/30">Find this on the FA Whole Game System or ask the parent directly.</p>
+          </div>
+        </div>
+      )}
       </section>
 
       {mode === 'new' ? <section className="mb-6 rounded-2xl border p-8" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>

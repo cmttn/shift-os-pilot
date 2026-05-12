@@ -43,6 +43,9 @@ export interface ParentPlayer {
   dob: string | null;
   age: number | null;
   is_active: boolean;
+  invite_token: string | null;
+  fa_fan_number: string | null;
+  fa_fan_verified: boolean;
   teams: ParentPlayerTeam[];
 }
 
@@ -69,6 +72,9 @@ interface RawPlayer {
   last_name: string | null;
   dob: string | null;
   is_active: boolean | null;
+  invite_token: string | null;
+  fa_fan_number: string | null;
+  fa_fan_verified: boolean | null;
 }
 
 interface RawTeam {
@@ -170,7 +176,7 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
   const userId = session.user.id;
   const [profileRes, playersRes] = await Promise.all([
     supabase.from('users_profile').select('full_name').eq('id', userId).single(),
-    supabase.from('players').select('id,team_id,first_name,last_name,dob,is_active').eq('parent_user_id', session.user.id).eq('is_active', true).order('first_name', { ascending: true })
+    supabase.from('players').select('id,team_id,first_name,last_name,dob,is_active,invite_token,fa_fan_number,fa_fan_verified').eq('parent_user_id', session.user.id).eq('is_active', true).order('first_name', { ascending: true })
   ]);
 
   const playerRows = (playersRes.data ?? []) as RawPlayer[];
@@ -233,6 +239,9 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
       dob: player.dob,
       age: calculateAge(player.dob),
       is_active: Boolean(player.is_active),
+      invite_token: player.invite_token,
+      fa_fan_number: player.fa_fan_number,
+      fa_fan_verified: player.fa_fan_verified ?? false,
       teams: playerTeamRows.map((team) => {
         const club = clubRows.find((item) => item.id === team.club_id) ?? null;
         return {

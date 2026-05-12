@@ -71,6 +71,7 @@ function PlayerCard({ player, allSameClub, globalPrimaryColour, compact }: {
             {teamMeta(firstTeam)}
           </span>
           {!allSameClub && firstTeam?.club_name ? <span className="mt-1 block text-xs text-white/30">{firstTeam.club_name}</span> : null}
+          {player.fa_fan_verified ? <span className="mt-2 inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400">FA ✓</span> : null}
           {player.teams.length > 1 ? (
             <span className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {player.teams.map((team) => (
@@ -81,6 +82,20 @@ function PlayerCard({ player, allSameClub, globalPrimaryColour, compact }: {
         </span>
         <span className={`${compact ? 'text-xl' : 'text-2xl'} text-white/25`}>→</span>
       </div>
+    </Link>
+  );
+}
+
+function FanPrompt({ player }: { player: ParentPlayer }) {
+  if (player.fa_fan_number || !player.invite_token) return null;
+
+  return (
+    <Link
+      href={`/invite/player/${player.invite_token}/complete`}
+      className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-blue-500/10 bg-blue-500/[0.05] p-3 transition hover:bg-blue-500/[0.08]"
+    >
+      <span className="text-sm text-white/60">Add {player.first_name || 'player'}&apos;s FAN number</span>
+      <span className="text-sm font-semibold text-blue-400">Add →</span>
     </Link>
   );
 }
@@ -134,7 +149,10 @@ export default async function ParentDashboardPage({ searchParams }: ParentDashbo
           ) : (
             <section className="mt-4">
               {data.players.map((player) => (
-                <PlayerCard key={player.id} player={player} allSameClub={data.allSameClub} globalPrimaryColour={data.globalPrimaryColour} compact />
+                <div key={player.id}>
+                  <PlayerCard player={player} allSameClub={data.allSameClub} globalPrimaryColour={data.globalPrimaryColour} compact />
+                  <FanPrompt player={player} />
+                </div>
               ))}
             </section>
           )}
@@ -180,7 +198,10 @@ export default async function ParentDashboardPage({ searchParams }: ParentDashbo
             </section>
           ) : (
             data.players.map((player) => (
-              <PlayerCard key={player.id} player={player} allSameClub={data.allSameClub} globalPrimaryColour={data.globalPrimaryColour} compact={false} />
+              <div key={player.id}>
+                <PlayerCard player={player} allSameClub={data.allSameClub} globalPrimaryColour={data.globalPrimaryColour} compact={false} />
+                <FanPrompt player={player} />
+              </div>
             ))
           )}
         </section>

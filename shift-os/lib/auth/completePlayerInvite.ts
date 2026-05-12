@@ -74,5 +74,5 @@ export async function completePlayerInvite(supabase: SupabaseClient, userId: str
     if (updateError) throw updateError;
   }
 
-  return '/dashboard/parent?invite_accepted=true';
+  return `/invite/player/${encodeURIComponent(token)}/complete`;
 }

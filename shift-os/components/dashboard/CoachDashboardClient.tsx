@@ -99,6 +99,20 @@ function getInviteDot(player: CoachDashboardData['players'][number]): { colour: 
   return { colour: 'rgba(255,255,255,0.35)', label: 'Not yet invited' };
 }
 
+function getFanBadge(player: CoachDashboardData['players'][number]): { label: string; className: string; title?: string } {
+  if (player.fa_fan_number && player.fa_fan_verified) {
+    return { label: 'FA ✓', className: 'bg-emerald-500/10 text-emerald-400' };
+  }
+  if (player.fa_fan_number) {
+    return { label: 'FAN added', className: 'bg-amber-500/10 text-amber-300' };
+  }
+  return {
+    label: 'No FAN',
+    className: 'bg-white/[0.06] text-white/35',
+    title: 'Ask the parent to add their FA number via the invite link'
+  };
+}
+
 export default function CoachDashboardClient({ data }: CoachDashboardClientProps) {
   const router = useRouter();
   const [activeTeamId, setActiveTeamId] = useState(data.activeTeamId);
@@ -336,6 +350,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
                     </div>
                     <h2 className="mt-2 text-sm font-semibold text-white">{player.full_name}</h2>
                     {player.dob ? <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}{calculateAge(player.dob) ? ` / ${calculateAge(player.dob)}` : ''}</p> : null}
+                    <span className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-xs ${getFanBadge(player).className}`} title={getFanBadge(player).title}>{getFanBadge(player).label}</span>
                   </article>
                 ))}
               </div>
@@ -392,6 +407,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
                     </div>
                     <h2 className="mt-2 text-sm font-semibold text-white">{player.full_name}</h2>
                     {player.dob ? <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}</p> : null}
+                    <span className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-xs ${getFanBadge(player).className}`} title={getFanBadge(player).title}>{getFanBadge(player).label}</span>
                   </article>
                 ))}
               </div>
