@@ -1,4 +1,5 @@
 import ParentAvailabilityButton from '@/components/dashboard/ParentAvailabilityButton';
+import type { ReactNode } from 'react';
 import type { ParentAvailabilityStatus, ParentPlayerTeam, ParentSession } from '@/lib/dashboard/getParentDashboardData';
 
 interface ParentFixturesClientProps {
@@ -6,6 +7,7 @@ interface ParentFixturesClientProps {
   playerName: string;
   team: ParentPlayerTeam;
   heroSessionId: string | null;
+  afterHero?: ReactNode;
 }
 
 function formatDay(value: string): string {
@@ -64,7 +66,7 @@ function nextToggleStatus(status: ParentAvailabilityStatus): 'available' | 'unav
   return status === 'available' ? 'unavailable' : 'available';
 }
 
-export default function ParentFixturesClient({ playerId, playerName, team, heroSessionId }: ParentFixturesClientProps) {
+export default function ParentFixturesClient({ playerId, playerName, team, heroSessionId, afterHero }: ParentFixturesClientProps) {
   const sessions = team.upcoming_sessions;
   const heroSession = sessions.find((session) => session.id === heroSessionId) ?? sessions[0] ?? null;
   const visibleSessions = sessions.filter((session) => session.id !== heroSession?.id);
@@ -190,6 +192,7 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
         {heroSession ? (
           <>
             {renderHeroCard(heroSession, false)}
+            {afterHero ? <div className="mt-4">{afterHero}</div> : null}
             <div className="mt-6">{renderHeroAvailability(heroSession, false)}</div>
           </>
         ) : (
@@ -214,6 +217,7 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
               <p className="mt-2 text-sm text-white/40">Your coach has not posted a fixture, training session or tournament yet.</p>
             </section>
           )}
+          {afterHero ? <div className="mt-4">{afterHero}</div> : null}
         </aside>
 
         <section className="min-h-[calc(100vh-64px)] border-l px-12 py-10" style={{ backgroundColor: 'rgba(255,255,255,0.01)', borderColor: 'rgba(255,255,255,0.04)' }}>

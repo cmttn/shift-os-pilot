@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { MILESTONES, getCurrentSeason, isPreSeason, type StarCategory } from '@/lib/tools/starCategories';
+import { getCurrentSeason, isPreSeason, type StarCategory } from '@/lib/tools/starCategories';
 
 interface AwardStarsInput {
   player_id: string;
@@ -35,12 +35,11 @@ interface StarTotalRow {
 type CategoryColumn = 'enjoyment_stars' | 'effort_stars' | 'teamwork_stars' | 'bravery_stars' | 'attitude_stars' | 'special_stars';
 
 const categoryColumnMap: Partial<Record<StarCategory, CategoryColumn>> = {
+  instructions: 'attitude_stars',
+  teammate: 'teamwork_stars',
   enjoyment: 'enjoyment_stars',
   effort: 'effort_stars',
-  teamwork: 'teamwork_stars',
-  bravery: 'bravery_stars',
-  attitude: 'attitude_stars',
-  special: 'special_stars'
+  bravery: 'bravery_stars'
 };
 
 function toStringArray(value: unknown): string[] {
@@ -96,11 +95,8 @@ export async function awardStars(input: AwardStarsInput): Promise<AwardStarsResu
     categoryTotals[categoryColumn] += stars;
   }
 
-  const reached = toStringArray(existing?.milestones_reached);
-  const pending = toStringArray(existing?.milestone_celebration_pending);
-  const milestone = MILESTONES.find((item) => previousTotal < item.stars && newTotal >= item.stars) ?? null;
-  const reachedLabels = milestone && !reached.includes(milestone.label) ? [...reached, milestone.label] : reached;
-  const pendingLabels = milestone && !pending.includes(milestone.label) ? [...pending, milestone.label] : pending;
+  const reachedLabels = toStringArray(existing?.milestones_reached);
+  const pendingLabels = toStringArray(existing?.milestone_celebration_pending);
 
   const payload = {
     player_id: input.player_id,
@@ -125,5 +121,5 @@ export async function awardStars(input: AwardStarsInput): Promise<AwardStarsResu
     return { success: false, new_total: previousTotal, milestone_reached: null };
   }
 
-  return { success: true, new_total: newTotal, milestone_reached: milestone?.label ?? null };
+  return { success: true, new_total: newTotal, milestone_reached: null };
 }
