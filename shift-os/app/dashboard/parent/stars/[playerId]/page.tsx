@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import MilestoneMomentGrid from '@/components/dashboard/MilestoneMomentGrid';
 import { createClient } from '@/lib/supabase/server';
-import { getCategoryMeta, getCurrentSeason, MILESTONES } from '@/lib/tools/starCategories';
+import { getCategoryMeta, getCurrentSeason, MILESTONES, type MilestoneId } from '@/lib/tools/starCategories';
 
 interface GoalsPageProps {
   params: {
@@ -25,7 +24,6 @@ interface TotalRow {
   teamwork_stars: number | null;
   bravery_stars: number | null;
   attitude_stars: number | null;
-  special_stars: number | null;
 }
 
 interface GoalRow {
@@ -36,7 +34,10 @@ interface GoalRow {
 }
 
 interface MilestoneRow {
-  milestone_id: string;
+  milestone_id: MilestoneId;
+  opponent: string | null;
+  session_date: string | null;
+  achieved_at: string | null;
 }
 
 function fullName(player: PlayerRow): string {
@@ -52,6 +53,10 @@ function formatDate(value: string | null): string {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return value;
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function milestoneLabel(id: string): string {
+  return MILESTONES.find((milestone) => milestone.id === id)?.label ?? id;
 }
 
 export default async function ChildGoalsPage({ params }: GoalsPageProps) {
@@ -70,21 +75,21 @@ export default async function ChildGoalsPage({ params }: GoalsPageProps) {
 
   const season = getCurrentSeason();
   const [{ data: total }, { data: recentGoals }, { data: allTotals }, { data: milestoneRows }] = await Promise.all([
-    supabase.from('player_star_totals').select('season,total_stars,potm_stars,enjoyment_stars,effort_stars,teamwork_stars,bravery_stars,attitude_stars,special_stars').eq('player_id', player.id).eq('season', season).maybeSingle<TotalRow>(),
+    supabase.from('player_star_totals').select('season,total_stars,potm_stars,enjoyment_stars,effort_stars,teamwork_stars,bravery_stars,attitude_stars').eq('player_id', player.id).eq('season', season).maybeSingle<TotalRow>(),
     supabase.from('player_stars').select('id,stars_awarded,category,awarded_at').eq('player_id', player.id).eq('season', season).order('awarded_at', { ascending: false }).limit(5),
     supabase.from('player_star_totals').select('season,total_stars').eq('player_id', player.id).order('season', { ascending: false }),
-    supabase.from('player_milestone_achievements').select('milestone_id').eq('player_id', player.id)
+    supabase.from('player_milestone_achievements').select('milestone_id,opponent,session_date,achieved_at').eq('player_id', player.id).order('achieved_at', { ascending: false })
   ]);
 
   const totalGoals = total?.total_stars ?? 0;
-  const achievedIds = ((milestoneRows ?? []) as MilestoneRow[]).map((row) => row.milestone_id);
-  const focusBreakdown = [
+  const goalBreakdown = [
     { label: getCategoryMeta('instructions').label, goals: total?.attitude_stars ?? 0 },
     { label: getCategoryMeta('teammate').label, goals: total?.teamwork_stars ?? 0 },
     { label: getCategoryMeta('enjoyment').label, goals: total?.enjoyment_stars ?? 0 },
     { label: getCategoryMeta('bravery').label, goals: total?.bravery_stars ?? 0 },
     { label: getCategoryMeta('effort').label, goals: total?.effort_stars ?? 0 }
   ].sort((a, b) => b.goals - a.goals);
+  const milestones = (milestoneRows ?? []) as MilestoneRow[];
 
   return (
     <main className="min-h-screen px-5 pb-12 pt-8 text-white" style={{ backgroundColor: '#080a0f' }}>
@@ -101,9 +106,9 @@ export default async function ChildGoalsPage({ params }: GoalsPageProps) {
         </section>
 
         <section className="mt-8 border-t border-white/[0.06] pt-6">
-          <h2 className="text-xs font-bold uppercase tracking-[0.24em] text-white/35">Focus breakdown</h2>
+          <h2 className="text-xs font-bold uppercase tracking-[0.24em] text-white/35">Goal breakdown</h2>
           <div className="mt-4 divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06]" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)' }}>
-            {focusBreakdown.map((item) => (
+            {goalBreakdown.map((item) => (
               <p key={item.label} className="flex justify-between gap-4 px-4 py-3 text-sm">
                 <span className="text-white/70">{item.label}</span>
                 <span className="font-semibold text-white">{item.goals} goals</span>
@@ -126,7 +131,22 @@ export default async function ChildGoalsPage({ params }: GoalsPageProps) {
           </div>
         </section>
 
-        <MilestoneMomentGrid playerId={player.id} parentUserId={user.id} milestones={MILESTONES} achievedIds={achievedIds} />
+        <section className="mt-8">
+          <h2 className="text-xs font-bold uppercase tracking-[0.24em] text-white/35">Milestones</h2>
+          <div className="mt-4 divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+            {milestones.length === 0 ? (
+              <p className="px-4 py-3 text-xs text-white/20">No milestones yet</p>
+            ) : milestones.map((milestone) => (
+              <article key={`${milestone.milestone_id}-${milestone.achieved_at ?? ''}`} className="flex items-center justify-between gap-4 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-white">{milestoneLabel(milestone.milestone_id)}</p>
+                  <p className="mt-0.5 text-xs text-white/35">vs {milestone.opponent ?? 'Match'} | {formatDate(milestone.session_date ?? milestone.achieved_at)}</p>
+                </div>
+                <p className="shrink-0 text-xs text-emerald-400/60">+3 goals</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className="mt-8">
           <h2 className="text-xs font-bold uppercase tracking-[0.24em] text-white/35">Past seasons</h2>

@@ -31,11 +31,11 @@ interface ClubRow {
   primary_colour: string | null;
 }
 
-interface FocusRow {
+interface GoalRow {
   category: ParentStarCategory;
 }
 
-const focusCategories = STAR_CATEGORIES.filter((category) => category.id !== 'potm') as Array<typeof STAR_CATEGORIES[number] & { id: ParentStarCategory }>;
+const goalCategories = STAR_CATEGORIES.filter((category) => category.id !== 'potm') as Array<typeof STAR_CATEGORIES[number] & { id: ParentStarCategory }>;
 
 function fullName(player: PlayerRow | null): string {
   return [player?.first_name, player?.last_name].map((part) => part?.trim()).filter(Boolean).join(' ') || 'Player';
@@ -51,7 +51,7 @@ function formatDate(value: string): string {
   return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-export default function GoalFocusPage() {
+export default function SetGoalPage() {
   const params = useParams<{ sessionId: string; playerId: string }>();
   const router = useRouter();
   const [session, setSession] = useState<SessionRow | null>(null);
@@ -78,14 +78,14 @@ export default function GoalFocusPage() {
         return;
       }
 
-      const [{ data: sessionData }, { data: playerData }, { data: focusData }] = await Promise.all([
+      const [{ data: sessionData }, { data: playerData }, { data: goalData }] = await Promise.all([
         supabase.from('sessions').select('id,team_id,type,opponent,title,session_date').eq('id', params.sessionId).maybeSingle<SessionRow>(),
         supabase.from('players').select('id,team_id,first_name,last_name').eq('id', params.playerId).eq('parent_user_id', user.id).maybeSingle<PlayerRow>(),
-        supabase.from('player_star_goals').select('category').eq('session_id', params.sessionId).eq('player_id', params.playerId).maybeSingle<FocusRow>()
+        supabase.from('player_star_goals').select('category').eq('session_id', params.sessionId).eq('player_id', params.playerId).maybeSingle<GoalRow>()
       ]);
 
       if (!sessionData || !playerData || sessionData.team_id !== playerData.team_id) {
-        setError('Focus not found for this player.');
+        setError('Goal not found for this player.');
         return;
       }
 
@@ -95,13 +95,13 @@ export default function GoalFocusPage() {
       setPlayer(playerData);
       setTeam(teamData ?? null);
       setPrimaryColour(clubData?.primary_colour ?? '#00C851');
-      setSelectedCategory(focusData?.category ?? null);
+      setSelectedCategory(goalData?.category ?? null);
     }
 
     void load();
   }, [params.playerId, params.sessionId, router]);
 
-  async function saveFocus() {
+  async function saveGoal() {
     if (!player || !session || !selectedCategory) return;
     setSaving(true);
     setError('');
@@ -139,14 +139,13 @@ export default function GoalFocusPage() {
     <main className="min-h-screen px-5 pb-10 pt-8 text-white" style={{ backgroundColor: '#080a0f' }}>
       <div className="mx-auto max-w-[480px]">
         <header>
-          <h1 className="text-xl font-bold text-white">{firstName(player)}&apos;s focus</h1>
+          <h1 className="text-xl font-bold text-white">{firstName(player)}&apos;s goal</h1>
           <p className="mt-2 text-sm text-white/40">{title}</p>
         </header>
 
         <section className="mt-8">
-          <p className="mb-4 text-sm text-white/40">Choose a focus for today:</p>
           <div className="space-y-2">
-            {focusCategories.map((category) => {
+            {goalCategories.map((category) => {
               const selected = selectedCategory === category.id;
               return (
                 <button
@@ -171,11 +170,11 @@ export default function GoalFocusPage() {
         <button
           type="button"
           disabled={!selectedCategory || saving}
-          onClick={() => void saveFocus()}
+          onClick={() => void saveGoal()}
           className="mt-6 min-h-[52px] w-full rounded-full px-6 py-3 font-bold text-white transition-all duration-300 ease-out disabled:opacity-40"
           style={{ background: `linear-gradient(135deg, ${primaryColour}, #059669)` }}
         >
-          {saving ? 'Saving...' : 'Set Focus'}
+          {saving ? 'Saving...' : 'Set Goal'}
         </button>
         <Link href={player && session ? `/dashboard/parent/player/${player.id}/team/${session.team_id}` : '/dashboard/parent'} className="mt-8 block text-center text-sm text-white/35">Back</Link>
       </div>

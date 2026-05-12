@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import ParentFixturesClient from '@/components/dashboard/ParentFixturesClient';
+import { GoalAwardTrigger, type GoalAwardSession } from '@/components/dashboard/GoalAwardSheet';
 import ParentQuickSwitcher, { type ParentQuickSwitchOption } from '@/components/dashboard/ParentQuickSwitcher';
 import BottomNav from '@/components/mobile/BottomNav';
-import { getParentDashboardData, type ParentSession } from '@/lib/dashboard/getParentDashboardData';
+import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
 import { createClient } from '@/lib/supabase/server';
-import { getCategoryMeta, getCurrentSeason, type ParentStarCategory } from '@/lib/tools/starCategories';
+import { getCategoryMeta, getCurrentSeason, MILESTONES, type MilestoneId, type ParentStarCategory } from '@/lib/tools/starCategories';
 
 interface ParentPlayerTeamDashboardPageProps {
   params: {
@@ -37,7 +38,7 @@ interface PollCardRow {
   social_card_url: string | null;
 }
 
-interface FocusRow {
+interface GoalCategoryRow {
   category: ParentStarCategory;
 }
 
@@ -45,11 +46,13 @@ interface GoalTotalRow {
   total_stars: number | null;
 }
 
-interface PastSessionRow {
-  id: string;
+interface PastSessionRow extends GoalAwardSession {}
+
+interface MilestoneHistoryRow {
+  milestone_id: MilestoneId;
   opponent: string | null;
-  title: string | null;
-  session_date: string;
+  session_date: string | null;
+  achieved_at: string | null;
 }
 
 function fullName(player: PlayerNameRow | null): string {
@@ -63,26 +66,17 @@ function formatDate(value: string | null): string {
   return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
-function formatSessionDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-function isSameDay(left: string, right: Date): boolean {
-  const date = new Date(left);
-  return !Number.isNaN(date.valueOf())
-    && date.getFullYear() === right.getFullYear()
-    && date.getMonth() === right.getMonth()
-    && date.getDate() === right.getDate();
+function sessionType(value: string | undefined): string {
+  if (value === 'match') return 'Match';
+  if (value === 'tournament') return 'Tournament';
+  return 'Training';
 }
 
 function sessionLabel(session: { type?: string; opponent: string | null; title: string | null; session_date?: string } | null): string {
   if (!session) return 'next session';
-  const type = session.type === 'match' ? 'Match' : session.type === 'tournament' ? 'Tournament' : 'Training';
   const opponent = session.opponent ? ` vs ${session.opponent}` : session.title ? ` - ${session.title}` : '';
-  const date = session.session_date ? ` | ${formatSessionDate(session.session_date)}` : '';
-  return `${type}${opponent}${date}`;
+  const date = session.session_date ? ` | ${formatDate(session.session_date)}` : '';
+  return `${sessionType(session.type)}${opponent}${date}`;
 }
 
 function buildSwitcherOptions(
@@ -124,6 +118,10 @@ function buildSwitcherOptions(
   return null;
 }
 
+function milestoneLabel(id: string): string {
+  return MILESTONES.find((milestone) => milestone.id === id)?.label ?? id;
+}
+
 export default async function ParentPlayerTeamDashboardPage({ params }: ParentPlayerTeamDashboardPageProps) {
   const data = await getParentDashboardData();
   if (!data) redirect('/dashboard/player/welcome');
@@ -149,7 +147,6 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
   const season = getCurrentSeason();
   const since = new Date(Date.now() - 7 * 86400000).toISOString();
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-  const todaySession = team.upcoming_sessions.find((session) => isSameDay(session.session_date, now)) ?? null;
 
   const [{ data: latestPotm }, { data: playerPotm }] = await Promise.all([
     supabase.from('potm_stats').select('player_id,last_won_at,last_session_id').eq('team_id', team.team_id).gte('last_won_at', since).order('last_won_at', { ascending: false }).limit(1).maybeSingle<PotmStatRow>(),
@@ -167,15 +164,15 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
   const playerPotmSession = (potmSessions ?? []).find((item) => item.id === playerPotm?.last_session_id) ?? null;
 
   const [
-    { data: heroFocus },
-    { data: todayFocus },
+    { data: nextGoal },
     { data: goalTotal },
-    { data: recentPastSessions }
+    { data: recentPastSessions },
+    { data: milestoneRows }
   ] = await Promise.all([
-    heroSession ? supabase.from('player_star_goals').select('category').eq('player_id', player.id).eq('session_id', heroSession.id).maybeSingle<FocusRow>() : Promise.resolve({ data: null }),
-    todaySession ? supabase.from('player_star_goals').select('category').eq('player_id', player.id).eq('session_id', todaySession.id).maybeSingle<FocusRow>() : Promise.resolve({ data: null }),
+    heroSession ? supabase.from('player_star_goals').select('category').eq('player_id', player.id).eq('session_id', heroSession.id).maybeSingle<GoalCategoryRow>() : Promise.resolve({ data: null }),
     supabase.from('player_star_totals').select('total_stars').eq('player_id', player.id).eq('season', season).maybeSingle<GoalTotalRow>(),
-    supabase.from('sessions').select('id,opponent,title,session_date').eq('team_id', team.team_id).eq('is_active', true).lt('session_date', now.toISOString()).gte('session_date', weekAgo).order('session_date', { ascending: false }).limit(5)
+    supabase.from('sessions').select('id,type,opponent,title,session_date').eq('team_id', team.team_id).eq('is_active', true).lt('session_date', now.toISOString()).gte('session_date', weekAgo).order('session_date', { ascending: false }).limit(5),
+    supabase.from('player_milestone_achievements').select('milestone_id,opponent,session_date,achieved_at').eq('player_id', player.id).order('achieved_at', { ascending: false })
   ]);
   const pastSessions = (recentPastSessions ?? []) as PastSessionRow[];
   const { data: awardedPastGoals } = pastSessions.length > 0
@@ -191,54 +188,78 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
     .eq('team_id', team.team_id)
     .neq('status', 'resolved');
 
+  const scoreline = (
+    <Link
+      href={`/dashboard/parent/stars/${player.id}`}
+      className="border-l pl-3 text-sm font-bold tabular-nums text-white transition-colors duration-300 ease-out hover:text-white/70"
+      style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+      aria-label={`${goalsTotal} goals this season`}
+    >
+      <span className="mr-1 text-sm">⚽</span>{goalsTotal}
+    </Link>
+  );
+
   const headerActions = (
     <div className="flex items-center gap-3">
       {switcher ? <ParentQuickSwitcher label={switcher.label} options={switcher.options} /> : null}
-      <Link
-        href={`/dashboard/parent/stars/${player.id}`}
-        className="border-l pl-3 text-base font-bold tabular-nums text-white transition-colors duration-300 ease-out hover:text-white/70"
-        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
-        aria-label={`${goalsTotal} goals this season`}
-      >
-        <span className="mr-1 text-sm">⚽</span>{goalsTotal}
-      </Link>
+      {scoreline}
     </div>
   );
 
-  const focusPrompt = heroSession ? (
-    <section className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
-      {heroFocus ? (
-        <div className="flex items-start justify-between gap-4">
+  const nextGoalPrompt = heroSession ? (
+    <section
+      className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4"
+      style={{ borderLeft: `3px solid ${nextGoal ? getCategoryMeta(nextGoal.category).colour : team.club_primary_colour}` }}
+    >
+      {nextGoal ? (
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-white/40">Focus set:</p>
-            <p className="mt-1 text-sm font-medium text-white">{getCategoryMeta(heroFocus.category).label}</p>
+            <p className="text-sm font-semibold text-white">{getCategoryMeta(nextGoal.category).label}</p>
+            <p className="mt-1 text-xs text-white/40">{player.first_name}&apos;s goal for {sessionLabel(heroSession)}</p>
           </div>
-          <Link href={`/dashboard/parent/stars/goal/${heroSession.id}/${player.id}`} className="text-xs text-white/35 transition-colors duration-300 ease-out hover:text-white">Change</Link>
+          <Link href={`/dashboard/parent/stars/goal/${heroSession.id}/${player.id}`} className="shrink-0 text-xs text-white/30 transition-colors duration-300 ease-out hover:text-white">Change -&gt;</Link>
         </div>
       ) : (
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-white">Set a focus for {player.first_name}&apos;s next session</p>
+            <p className="text-sm font-semibold text-white">Set a goal for {player.first_name}&apos;s next session</p>
             <p className="mt-1 text-xs text-white/40">{sessionLabel(heroSession)}</p>
           </div>
-          <Link href={`/dashboard/parent/stars/goal/${heroSession.id}/${player.id}`} className="shrink-0 text-sm font-semibold" style={{ color: team.club_primary_colour }}>Set focus -&gt;</Link>
+          <Link href={`/dashboard/parent/stars/goal/${heroSession.id}/${player.id}`} className="shrink-0 text-sm font-semibold" style={{ color: team.club_primary_colour }}>Set goal -&gt;</Link>
         </div>
       )}
     </section>
   ) : null;
 
-  const matchDayFocus = todayFocus ? (
-    <section className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4" style={{ borderLeft: `3px solid ${getCategoryMeta(todayFocus.category).colour}` }}>
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/35">Today&apos;s focus:</p>
-      <p className="mt-2 text-lg font-bold text-white">{getCategoryMeta(todayFocus.category).label}</p>
-    </section>
+  const unawardedTrigger = unawardedSession ? (
+    <GoalAwardTrigger
+      playerId={player.id}
+      playerName={player.first_name || player.full_name}
+      session={unawardedSession}
+      primaryColour={team.club_primary_colour}
+    />
   ) : null;
 
-  const unawardedPrompt = unawardedSession ? (
-    <section className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-white">Award {player.first_name}&apos;s goals for {sessionLabel(unawardedSession)}</p>
-        <Link href={`/dashboard/parent/stars/award/${unawardedSession.id}/${player.id}`} className="shrink-0 text-sm font-semibold" style={{ color: team.club_primary_colour }}>Award -&gt;</Link>
+  const beforeHero = unawardedTrigger || nextGoalPrompt ? (
+    <div className="space-y-3">
+      {unawardedTrigger}
+      {nextGoalPrompt}
+    </div>
+  ) : null;
+
+  const milestoneHistory = ((milestoneRows ?? []) as MilestoneHistoryRow[]).filter((row) => Boolean(row.milestone_id));
+  const milestoneStrip = milestoneHistory.length > 0 ? (
+    <section>
+      <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-white/30">{player.first_name}&apos;s milestones</h2>
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {milestoneHistory.map((milestone) => (
+          <article key={`${milestone.milestone_id}-${milestone.achieved_at ?? ''}`} className="min-w-40 shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+            <p className="text-sm font-semibold text-white">{milestoneLabel(milestone.milestone_id)}</p>
+            <p className="mt-1 text-xs text-white/35">vs {milestone.opponent ?? 'Match'}</p>
+            <p className="mt-0.5 text-xs text-white/25">{formatDate(milestone.session_date ?? milestone.achieved_at)}</p>
+            <p className="mt-2 text-xs text-emerald-400/60">+3 goals</p>
+          </article>
+        ))}
       </div>
     </section>
   ) : null;
@@ -289,11 +310,6 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             </div>
           </section>
 
-          <div className="mt-5 space-y-4">
-            {matchDayFocus}
-            {unawardedPrompt}
-          </div>
-
           {playerPotm ? (
             <section className="mt-5 rounded-2xl border p-5" style={{ backgroundColor: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.4)' }}>
               <h2 className="text-xl font-black text-amber-300">Player of the Match: {player.full_name}</h2>
@@ -306,7 +322,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             </section>
           ) : null}
 
-          <ParentFixturesClient playerId={player.id} playerName={player.full_name} team={team} heroSessionId={heroSession?.id ?? null} afterHero={focusPrompt} />
+          <ParentFixturesClient playerId={player.id} playerName={player.full_name} team={team} heroSessionId={heroSession?.id ?? null} beforeHero={beforeHero} afterSchedule={milestoneStrip} />
         </div>
       </section>
 
@@ -316,10 +332,6 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             <p className="whitespace-nowrap px-8 py-2 text-sm text-white/75 [animation:ticker_20s_linear_infinite] hover:[animation-play-state:paused]">Player of the Match: {fullName(latestPotmPlayer)} vs {latestPotmSession?.opponent ?? latestPotmSession?.title ?? 'the opposition'}</p>
           </div>
         ) : null}
-        <div className="mx-auto mt-6 max-w-[900px] space-y-4">
-          {matchDayFocus}
-          {unawardedPrompt}
-        </div>
         {playerPotm ? (
           <section className="mx-auto mt-6 max-w-[900px] rounded-2xl border p-5" style={{ backgroundColor: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.4)' }}>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -335,7 +347,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             {cardPoll?.social_card_url ? <img src={cardPoll.social_card_url} alt="" className="mt-4 max-w-md rounded-xl border border-white/10" /> : null}
           </section>
         ) : null}
-        <ParentFixturesClient playerId={player.id} playerName={player.full_name} team={team} heroSessionId={heroSession?.id ?? null} afterHero={focusPrompt} />
+        <ParentFixturesClient playerId={player.id} playerName={player.full_name} team={team} heroSessionId={heroSession?.id ?? null} beforeHero={beforeHero} afterSchedule={milestoneStrip} />
       </section>
 
       {singleContext ? <BottomNav primaryColour={team.club_primary_colour} items={[

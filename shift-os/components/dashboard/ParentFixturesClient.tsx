@@ -7,7 +7,8 @@ interface ParentFixturesClientProps {
   playerName: string;
   team: ParentPlayerTeam;
   heroSessionId: string | null;
-  afterHero?: ReactNode;
+  beforeHero?: ReactNode;
+  afterSchedule?: ReactNode;
 }
 
 function formatDay(value: string): string {
@@ -66,7 +67,7 @@ function nextToggleStatus(status: ParentAvailabilityStatus): 'available' | 'unav
   return status === 'available' ? 'unavailable' : 'available';
 }
 
-export default function ParentFixturesClient({ playerId, playerName, team, heroSessionId, afterHero }: ParentFixturesClientProps) {
+export default function ParentFixturesClient({ playerId, playerName, team, heroSessionId, beforeHero, afterSchedule }: ParentFixturesClientProps) {
   const sessions = team.upcoming_sessions;
   const heroSession = sessions.find((session) => session.id === heroSessionId) ?? sessions[0] ?? null;
   const visibleSessions = sessions.filter((session) => session.id !== heroSession?.id);
@@ -189,10 +190,10 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
   return (
     <>
       <section className="md:hidden">
+        {beforeHero ? <div className="mt-4">{beforeHero}</div> : null}
         {heroSession ? (
           <>
             {renderHeroCard(heroSession, false)}
-            {afterHero ? <div className="mt-4">{afterHero}</div> : null}
             <div className="mt-6">{renderHeroAvailability(heroSession, false)}</div>
           </>
         ) : (
@@ -202,6 +203,7 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
           </section>
         )}
         {renderScheduleList(false)}
+        {afterSchedule ? <div className="mt-5">{afterSchedule}</div> : null}
       </section>
 
       <section className="hidden min-h-[calc(100vh-64px)] grid-cols-2 md:grid">
@@ -211,19 +213,20 @@ export default function ParentFixturesClient({ playerId, playerName, team, heroS
             <span className="rounded-full px-3 py-1 text-xs font-semibold text-black" style={{ backgroundColor: team.club_primary_colour }}>{team.age_group ?? 'Age TBC'}</span>
             <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{team.gender ?? 'Mixed'}</span>
           </div>
+          {beforeHero ? <div className="mt-5">{beforeHero}</div> : null}
           {heroSession ? renderHeroCard(heroSession, true) : (
             <section className="mt-6 rounded-2xl border border-white/[0.06] p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)' }}>
               <h2 className="text-2xl font-bold text-white">No sessions yet</h2>
               <p className="mt-2 text-sm text-white/40">Your coach has not posted a fixture, training session or tournament yet.</p>
             </section>
           )}
-          {afterHero ? <div className="mt-4">{afterHero}</div> : null}
         </aside>
 
         <section className="min-h-[calc(100vh-64px)] border-l px-12 py-10" style={{ backgroundColor: 'rgba(255,255,255,0.01)', borderColor: 'rgba(255,255,255,0.04)' }}>
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-white/35">Your Availability</p>
           {heroSession ? renderHeroAvailability(heroSession, true) : <p className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 text-sm text-white/35">No current session to respond to.</p>}
           {renderScheduleList(true)}
+          {afterSchedule ? <div className="mt-5">{afterSchedule}</div> : null}
         </section>
       </section>
     </>
