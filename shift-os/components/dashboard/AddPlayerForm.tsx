@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-type PlayerMode = 'new' | 'attach';
+type PlayerMode = 'invite' | 'new' | 'attach';
 
 interface CoachTeamOption {
   id: string;
@@ -37,6 +37,7 @@ interface InviteResult {
   playerFirstName: string;
   teamName: string;
   inviteUrl: string;
+  message: string;
 }
 
 const ageGroups = ['U6', 'U7', 'U8', 'U9', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'Open Age', 'Veterans'];
@@ -67,7 +68,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
   const firstTeamId = teams[0]?.id ?? '';
   const firstPlayerId = clubPlayers[0]?.id ?? '';
 
-  const [mode, setMode] = useState<PlayerMode>('new');
+  const [mode, setMode] = useState<PlayerMode>('invite');
   const [teamId, setTeamId] = useState(firstTeamId);
   const [existingPlayerId, setExistingPlayerId] = useState(firstPlayerId);
   const [playerName, setPlayerName] = useState('');
@@ -89,10 +90,10 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
   const validate = (): string | null => {
     if (!teamId) return 'Choose a team first.';
     if (mode === 'attach' && !existingPlayerId) return 'Choose a player from the club database.';
+    if (mode === 'invite' && !playerName.trim()) return 'Enter the player first name to generate an invite.';
     if (mode === 'new') {
       if (!playerName.trim()) return 'Player name is required.';
       if (!ageGroup) return 'Age group is required.';
-      if (!dateOfBirth) return 'Date of birth is required.';
     }
     if (guardianOneEmail.trim() && !emailPattern.test(guardianOneEmail.trim())) return 'Guardian 1 email must be valid.';
     if (guardianTwoEmail.trim() && !emailPattern.test(guardianTwoEmail.trim())) return 'Guardian 2 email must be valid.';
@@ -112,9 +113,12 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
     };
   };
 
+  const getInviteMessage = (playerFirstName: string, teamName: string, inviteUrl: string): string =>
+    `We would like to invite ${playerFirstName} to join ${teamName} on SHIFT OS.\n\nFollow this link to get connected:\n${inviteUrl}`;
+
   const resetFormForNextPlayer = () => {
     setInviteResult(null);
-    setMode('new');
+    setMode('invite');
     setPlayerName('');
     setAgeGroup(teams[0]?.ageGroup ?? '');
     setDateOfBirth('');
@@ -134,7 +138,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
       .from('players')
       .update({ invite_status: 'sent', invite_sent_at: new Date().toISOString() })
       .eq('id', inviteResult.playerId);
-    await navigator.clipboard.writeText(inviteResult.inviteUrl);
+    await navigator.clipboard.writeText(inviteResult.message);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
   };
@@ -162,7 +166,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
       let inviteToken = crypto.randomUUID();
       let savedFirstName = getNameParts(playerName).firstName;
 
-      if (mode === 'new') {
+      if (mode === 'new' || mode === 'invite') {
         const names = getNameParts(playerName);
         savedFirstName = names.firstName;
         const { data, error: playerError } = await createClient()
@@ -171,7 +175,8 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
             team_id: teamId,
             first_name: names.firstName,
             last_name: names.lastName,
-            dob: dateOfBirth,
+            age_group: mode === 'invite' ? selectedTeam?.ageGroup ?? null : ageGroup,
+            dob: mode === 'invite' ? null : dateOfBirth || null,
             is_active: true,
             invite_token: inviteToken,
             invite_status: 'pending'
@@ -205,7 +210,8 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
         playerId,
         playerFirstName: savedFirstName,
         teamName: selectedTeam?.name ?? 'the team',
-        inviteUrl
+        inviteUrl,
+        message: getInviteMessage(savedFirstName, selectedTeam?.name ?? 'the team', inviteUrl)
       });
       setLoading(false);
     } catch (submitError) {
@@ -218,7 +224,6 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
   const labelClass = 'mb-2 block text-sm font-medium text-white/50';
 
   if (inviteResult) {
-    const whatsappMessage = `Hi! ${inviteResult.playerFirstName} has been added to ${inviteResult.teamName} on SHIFT OS.\n\nTap this link to set up your account and stay connected:\n${inviteResult.inviteUrl}`;
     return (
       <section className="max-w-[760px] rounded-2xl border p-8" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
         <p className="text-5xl font-black leading-none" style={{ color: primaryColour }}>✓</p>
@@ -227,11 +232,12 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
         <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
           <p className="mb-3 text-sm text-white/50">Invite {inviteResult.playerFirstName}&apos;s parent</p>
           <code className="block truncate rounded-xl bg-white/[0.06] px-4 py-3 font-mono text-sm text-white">{inviteResult.inviteUrl}</code>
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/45">{inviteResult.message}</p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <button type="button" onClick={copyInvite} className="rounded-full px-5 py-3 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]" style={{ backgroundColor: primaryColour, color: contrastText }}>
-              {copied ? 'Copied ✓' : 'Copy Link'}
+              {copied ? 'Copied ✓' : 'Copy Invite Message'}
             </button>
-            <a href={`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`} onClick={() => { void markInviteSent(); }} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-5 py-3 text-center text-sm font-semibold text-white transition-all duration-300 ease-out hover:bg-white/[0.06]">
+            <a href={`https://wa.me/?text=${encodeURIComponent(inviteResult.message)}`} onClick={() => { void markInviteSent(); }} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-5 py-3 text-center text-sm font-semibold text-white transition-all duration-300 ease-out hover:bg-white/[0.06]">
               Share via WhatsApp
             </a>
           </div>
@@ -264,7 +270,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
       <section className="mb-6 rounded-2xl border p-8" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
         <h2 className="mb-6 text-xl font-bold text-white">Player Details</h2>
         <div className="mb-6 flex gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
-          {(['new', 'attach'] as PlayerMode[]).map((tab) => (
+          {(['invite', 'new', 'attach'] as PlayerMode[]).map((tab) => (
             <button
               type="button"
               key={tab}
@@ -272,7 +278,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
               className="flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out"
               style={mode === tab ? { backgroundColor: primaryColour, color: contrastText } : { color: 'rgba(255,255,255,0.45)' }}
             >
-              {tab === 'new' ? 'New Player' : 'Attach From Club Database'}
+              {tab === 'invite' ? 'Quick Invite' : tab === 'new' ? 'Full Details' : 'Attach Existing'}
             </button>
           ))}
         </div>
@@ -292,6 +298,12 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
           ) : (
             <p className="rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-white/40">No players are in the club database yet. Add a new player first.</p>
           )
+        ) : mode === 'invite' ? (
+          <div>
+            <label className={labelClass}>Player First Name</label>
+            <input value={playerName} onChange={(event) => setPlayerName(event.target.value)} className={fieldClass} style={inputStyle} placeholder="e.g. Sam" />
+            <p className="mt-3 text-sm text-white/35">This creates a secure parent invite. The parent can complete the remaining player details after joining.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div className="md:col-span-2">
@@ -315,7 +327,7 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
         )}
       </section>
 
-      <section className="mb-6 rounded-2xl border p-8" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+      {mode === 'new' ? <section className="mb-6 rounded-2xl border p-8" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
         <h2 className="mb-6 text-xl font-bold text-white">Guardian Contacts</h2>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="md:col-span-2"><label className={labelClass}>Guardian 1 Name</label><input value={guardianOneName} onChange={(event) => setGuardianOneName(event.target.value)} className={fieldClass} style={inputStyle} placeholder="Primary contact name" /></div>
@@ -325,12 +337,12 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
           <div><label className={labelClass}>Secondary Contact Phone</label><input value={guardianTwoPhone} onChange={(event) => setGuardianTwoPhone(event.target.value)} className={fieldClass} style={inputStyle} placeholder="+44 7700 000000" /></div>
           <div><label className={labelClass}>Secondary Contact Email</label><input type="email" value={guardianTwoEmail} onChange={(event) => setGuardianTwoEmail(event.target.value)} className={fieldClass} style={inputStyle} placeholder="second-parent@example.com" /></div>
         </div>
-      </section>
+      </section> : null}
 
       {error ? <p className="mb-5 rounded-[10px] border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">{error}</p> : null}
 
       <button type="submit" disabled={loading || teams.length === 0} className="rounded-full px-8 py-4 font-semibold transition-all duration-300 ease-out hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60" style={{ background: `linear-gradient(135deg, ${primaryColour}, ${darkerPrimary})`, color: contrastText, boxShadow: `0 4px 20px ${primaryColour}59` }}>
-        {loading ? 'Saving Player...' : 'Save Player + Generate Parent Link'}
+        {loading ? 'Saving Player...' : mode === 'invite' ? 'Generate Parent Invite' : 'Save Player + Generate Parent Link'}
       </button>
     </form>
   );

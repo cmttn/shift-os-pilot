@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 
@@ -39,6 +40,14 @@ interface PlayerNameRow {
 interface SessionOpponentRow {
   opponent: string | null;
   title: string | null;
+}
+
+interface QuickInviteResult {
+  playerId: string;
+  playerFirstName: string;
+  teamName: string;
+  inviteUrl: string;
+  message: string;
 }
 
 function getContrastText(hexColour: string): string {
@@ -91,8 +100,14 @@ function getInviteDot(player: CoachDashboardData['players'][number]): { colour: 
 }
 
 export default function CoachDashboardClient({ data }: CoachDashboardClientProps) {
+  const router = useRouter();
   const [activeTeamId, setActiveTeamId] = useState(data.activeTeamId);
   const [recentPotm, setRecentPotm] = useState<RecentPotm | null>(null);
+  const [quickInviteName, setQuickInviteName] = useState('');
+  const [quickInviteResult, setQuickInviteResult] = useState<QuickInviteResult | null>(null);
+  const [quickInviteError, setQuickInviteError] = useState('');
+  const [quickInviteLoading, setQuickInviteLoading] = useState(false);
+  const [quickInviteCopied, setQuickInviteCopied] = useState(false);
   const activeTeam = data.teams.find((team) => team.id === activeTeamId) ?? data.teams[0] ?? null;
   const primaryColour = activeTeam?.club_primary_colour ?? '#00C851';
   const contrastText = getContrastText(primaryColour);
@@ -137,6 +152,126 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
     }
     void loadRecentPotm();
   }, [activeTeam?.id]);
+
+  const getInviteUrl = (token: string): string => {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || window.location.origin;
+    return `${siteUrl}/invite/player/${token}`;
+  };
+
+  const buildInviteMessage = (playerFirstName: string, teamName: string, inviteUrl: string): string =>
+    `We would like to invite ${playerFirstName} to join ${teamName} on SHIFT OS.\n\nFollow this link to get connected:\n${inviteUrl}`;
+
+  const markQuickInviteSent = async () => {
+    if (!quickInviteResult) return;
+    await createClient()
+      .from('players')
+      .update({ invite_status: 'sent', invite_sent_at: new Date().toISOString() })
+      .eq('id', quickInviteResult.playerId);
+  };
+
+  const copyQuickInviteMessage = async () => {
+    if (!quickInviteResult) return;
+    await markQuickInviteSent();
+    await navigator.clipboard.writeText(quickInviteResult.message);
+    setQuickInviteCopied(true);
+    window.setTimeout(() => setQuickInviteCopied(false), 2000);
+  };
+
+  const createQuickInvite = async () => {
+    if (!activeTeam?.id) {
+      setQuickInviteError('Choose a team before creating an invite.');
+      return;
+    }
+
+    const playerFirstName = quickInviteName.trim();
+    if (!playerFirstName) {
+      setQuickInviteError('Enter the player first name to generate the invite.');
+      return;
+    }
+
+    setQuickInviteLoading(true);
+    setQuickInviteError('');
+    setQuickInviteResult(null);
+
+    try {
+      const inviteToken = crypto.randomUUID();
+      const { data: player, error } = await createClient()
+        .from('players')
+        .insert({
+          team_id: activeTeam.id,
+          first_name: playerFirstName,
+          last_name: '',
+          age_group: activeTeam.age_group,
+          dob: null,
+          is_active: true,
+          invite_token: inviteToken,
+          invite_status: 'pending'
+        })
+        .select('id')
+        .single<{ id: string }>();
+
+      if (error || !player) throw new Error(error?.message ?? 'Player invite could not be created.');
+
+      const teamName = activeTeam.name;
+      const inviteUrl = getInviteUrl(inviteToken);
+      setQuickInviteResult({
+        playerId: player.id,
+        playerFirstName,
+        teamName,
+        inviteUrl,
+        message: buildInviteMessage(playerFirstName, teamName, inviteUrl)
+      });
+      setQuickInviteName('');
+      router.refresh();
+    } catch (inviteError) {
+      setQuickInviteError(inviteError instanceof Error ? inviteError.message : 'Unable to create that invite.');
+    } finally {
+      setQuickInviteLoading(false);
+    }
+  };
+
+  const renderQuickInvitePanel = () => (
+    <div className="mt-5 rounded-[14px] border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+      <p className="font-semibold text-white">Invite a player</p>
+      <p className="mt-1 text-sm text-white/35">Add a first name and send the parent a secure setup link.</p>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <input
+          value={quickInviteName}
+          onChange={(event) => setQuickInviteName(event.target.value)}
+          placeholder="Player first name"
+          className="min-h-11 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-white/25 placeholder:text-white/25"
+        />
+        <button
+          type="button"
+          onClick={createQuickInvite}
+          disabled={quickInviteLoading}
+          className="min-h-11 rounded-full px-5 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-55"
+          style={{ backgroundColor: primaryColour, color: contrastText }}
+        >
+          {quickInviteLoading ? 'Creating...' : 'Generate Invite'}
+        </button>
+      </div>
+      {quickInviteError ? <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">{quickInviteError}</p> : null}
+      {quickInviteResult ? (
+        <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
+          <p className="text-sm font-semibold text-white">{quickInviteResult.playerFirstName}&apos;s invite is ready</p>
+          <code className="mt-3 block truncate rounded-lg bg-white/[0.06] px-3 py-2 font-mono text-xs text-white">{quickInviteResult.inviteUrl}</code>
+          <p className="mt-3 whitespace-pre-line text-xs leading-relaxed text-white/45">{quickInviteResult.message}</p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button type="button" onClick={copyQuickInviteMessage} className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: contrastText }}>
+              {quickInviteCopied ? 'Copied ✓' : 'Copy Invite Message'}
+            </button>
+            <a href={`https://wa.me/?text=${encodeURIComponent(quickInviteResult.message)}`} onClick={() => { void markQuickInviteSent(); }} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-white/[0.06]">
+              Share via WhatsApp
+            </a>
+          </div>
+        </div>
+      ) : null}
+      <Link href="/dashboard/coach/players/new" className="mt-4 inline-flex text-sm font-semibold" style={{ color: primaryColour }}>
+        Add full player details instead →
+      </Link>
+    </div>
+  );
 
   return (
     <main className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
@@ -190,11 +325,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
               <Link href="/dashboard/coach/players/new" className="rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out" style={{ borderColor: primaryColour, color: primaryColour }}>Add Player +</Link>
             </div>
             {teamPlayers.length === 0 ? (
-              <div className="mt-5 rounded-[14px] border p-5 text-center" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-                <p className="font-semibold text-white">No players yet.</p>
-                <p className="mt-4 text-xs uppercase tracking-[0.24em] text-white/25">Team Join Code</p>
-                <p className="mt-2 font-mono text-3xl font-black tracking-[0.28em]" style={{ color: primaryColour }}>{activeTeam?.join_code ?? '------'}</p>
-              </div>
+              renderQuickInvitePanel()
             ) : (
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {teamPlayers.map((player) => (
@@ -251,7 +382,9 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
                 <Link href="/dashboard/coach/players/new" className="rounded-full border px-4 py-2 text-sm font-semibold" style={{ borderColor: primaryColour, color: primaryColour }}>Add Player +</Link>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3">
-                {teamPlayers.map((player) => (
+                {teamPlayers.length === 0 ? (
+                  <div className="col-span-2">{renderQuickInvitePanel()}</div>
+                ) : teamPlayers.map((player) => (
                   <article key={player.id} className="rounded-[14px] border p-4" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
                     <div className="relative flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: primaryColour, color: contrastText }}>
                       {initials(player.full_name)}
