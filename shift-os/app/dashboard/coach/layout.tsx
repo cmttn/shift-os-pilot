@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import { redirect } from 'next/navigation';
 import CoachSidebar from '@/components/dashboard/CoachSidebar';
 import NotificationPermission from '@/components/NotificationPermission';
 import MobileBottomNav from '@/components/navigation/mobile-bottom-nav';
@@ -18,7 +17,10 @@ function getInitials(name: string): string {
 
 export default async function CoachLayout({ children }: { children: ReactNode }) {
   const coachData = await getCoachData();
-  if (!coachData) redirect('/dashboard/coach/welcome');
+  if (!coachData) {
+    return <>{children}</>;
+  }
+
   const activeTeam = coachData.teams[0] ?? null;
   const primaryColour = activeTeam?.club_primary_colour ?? '#00C851';
   const title = activeTeam?.name ?? coachData.coach.full_name;

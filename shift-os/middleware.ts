@@ -95,7 +95,7 @@ export async function middleware(request: NextRequest) {
     const intendedRole = typeof session.user.user_metadata?.intended_role === 'string' ? session.user.user_metadata.intended_role : null;
 
     if (intendedRole === 'coach') {
-      return isOnRoute(pathname, '/dashboard/coach/welcome') ? response : redirectTo(request, '/dashboard/coach/welcome');
+      return isOnRoute(pathname, '/dashboard/coach/welcome') || isOnRoute(pathname, '/dashboard/coach/teams/new') ? response : redirectTo(request, '/dashboard/coach/welcome');
     }
 
     if (intendedRole === 'club_admin') {
