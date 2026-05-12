@@ -34,7 +34,7 @@ export default function ClubHeader({ clubData }: ClubHeaderProps) {
 
   return (
     <header
-      className="relative max-h-[80px] min-h-[80px] overflow-hidden px-5 py-4 md:max-h-none md:h-[200px] md:px-0 md:py-0"
+      className="relative hidden overflow-hidden md:block md:h-[200px] md:px-0 md:py-0"
       style={{ background: `linear-gradient(135deg, ${club.primary_colour} 0%, ${darkColour} 45%, #080a0f 100%)` }}
     >
       <div

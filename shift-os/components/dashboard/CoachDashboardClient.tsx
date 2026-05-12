@@ -135,8 +135,8 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
   return (
     <main className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
       <div className="mx-auto min-h-screen max-w-[480px] pb-[84px] md:ml-[260px] md:max-w-[900px] md:px-8 md:pb-12">
-        <header className="fixed inset-x-0 top-0 z-40 h-14 border-b backdrop-blur-xl md:static md:border-b-0 md:pt-8" style={{ backgroundColor: 'rgba(8,10,15,0.9)', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="mx-auto flex h-full max-w-[480px] items-center justify-between gap-3 px-4 md:max-w-[900px] md:px-0">
+        <header className="mx-5 mt-5 rounded-2xl border p-3 backdrop-blur-xl md:mx-0 md:mt-0 md:border-b-0 md:bg-transparent md:p-0 md:pt-8" style={{ backgroundColor: 'rgba(255,255,255,0.035)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="mx-auto flex h-full max-w-[480px] items-center justify-between gap-3 md:max-w-[900px] md:px-0">
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
               {data.teams.length === 0 ? <span className="rounded-full bg-white/[0.08] px-4 py-2 text-sm text-white/45">No team</span> : data.teams.map((team) => (
                 <button key={team.id} type="button" onClick={() => setActiveTeamId(team.id)} className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out" style={team.id === activeTeam?.id ? { backgroundColor: primaryColour, color: contrastText } : { backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}>{team.name}</button>
@@ -146,7 +146,7 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
           </div>
         </header>
 
-        <div className="px-5 pt-20 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)] md:gap-6 md:px-0 md:pt-8">
+        <div className="px-5 pt-5 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)] md:gap-6 md:px-0 md:pt-8">
           <div>
           {recentPotm ? (
             <div className="mb-4 flex h-11 items-center rounded-xl border px-4 text-sm text-white" style={{ backgroundColor: `${primaryColour}1a`, borderColor: `${primaryColour}33` }}>
