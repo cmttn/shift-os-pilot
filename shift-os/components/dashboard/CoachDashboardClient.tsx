@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import BottomNav from '@/components/mobile/BottomNav';
 import { createClient } from '@/lib/supabase/client';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 
@@ -88,7 +87,6 @@ function formatCompactSessionDate(value: string): string {
 export default function CoachDashboardClient({ data }: CoachDashboardClientProps) {
   const [activeTeamId, setActiveTeamId] = useState(data.activeTeamId);
   const [recentPotm, setRecentPotm] = useState<RecentPotm | null>(null);
-  const [unviewedTicketCount, setUnviewedTicketCount] = useState(0);
   const activeTeam = data.teams.find((team) => team.id === activeTeamId) ?? data.teams[0] ?? null;
   const primaryColour = activeTeam?.club_primary_colour ?? '#00C851';
   const contrastText = getContrastText(primaryColour);
@@ -133,20 +131,6 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
     }
     void loadRecentPotm();
   }, [activeTeam?.id]);
-
-  useEffect(() => {
-    async function loadTicketCount() {
-      const supabase = createClient();
-      const { count } = await supabase
-        .from('tickets')
-        .select('id', { count: 'exact', head: true })
-        .eq('coach_recipient_id', data.coach.id)
-        .eq('is_safeguarding', false)
-        .eq('status', 'open');
-      setUnviewedTicketCount(count ?? 0);
-    }
-    void loadTicketCount();
-  }, [data.coach.id]);
 
   return (
     <main className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
@@ -288,13 +272,6 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
           </section>
         </div>
       </div>
-      <BottomNav primaryColour={primaryColour} items={[
-        { href: '/dashboard/coach', label: 'Squad', icon: 'S' },
-        { href: '/dashboard/coach/schedule', label: 'Schedule', icon: 'C' },
-        { href: '/dashboard/coach/stats', label: 'Stats', icon: 'D' },
-        { href: '/dashboard/coach/tickets', label: 'Tickets', icon: 'T', badgeCount: unviewedTicketCount },
-        { href: '/dashboard/coach/profile', label: 'Profile', icon: 'P' }
-      ]} />
     </main>
   );
 }

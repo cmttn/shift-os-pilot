@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import CSVImporter from '@/components/fixtures/CSVImporter';
-import BottomNav from '@/components/mobile/BottomNav';
 import { getCoachData } from '@/lib/dashboard/getCoachData';
 
 export default async function CoachFixtureImportPage() {
@@ -19,13 +18,6 @@ export default async function CoachFixtureImportPage() {
           <CSVImporter teams={independentTeams.map((team) => ({ id: team.id, name: team.name }))} lockedTeamId={independentTeams[0]?.id} primaryColour={primaryColour} importedFrom="coach_csv" />
         </div>
       </div>
-      <BottomNav primaryColour={primaryColour} items={[
-        { href: '/dashboard/coach', label: 'Squad', icon: 'S' },
-        { href: '/dashboard/coach/schedule', label: 'Schedule', icon: 'C' },
-        { href: '/dashboard/coach/stats', label: 'Stats', icon: 'D' },
-        { href: '/dashboard/coach/tickets', label: 'Tickets', icon: 'T' },
-        { href: '/dashboard/coach/settings', label: 'Settings', icon: 'S' }
-      ]} />
     </main>
   );
 }

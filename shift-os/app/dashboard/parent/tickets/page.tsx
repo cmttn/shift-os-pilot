@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import BottomNav from '@/components/mobile/BottomNav';
 import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
 import { createClient } from '@/lib/supabase/server';
 import { PARENT_TICKET_TYPES, type TicketStatus, type TicketTypeDefinition } from '@/lib/tools/ticketTypes';
@@ -110,13 +109,6 @@ export default async function ParentTicketsPage({ searchParams }: ParentTicketsP
           </div>
         </details>
       </div>
-      <BottomNav primaryColour={primaryColour} items={[
-        { href: '/dashboard/parent', label: 'Home', icon: 'H' },
-        { href: '/dashboard/parent', label: 'Fixtures', icon: 'F' },
-        { href: '/dashboard/parent', label: 'Avail', icon: 'A' },
-        { href: '/dashboard/parent/tickets', label: 'Tickets', icon: 'T', badgeCount: openTickets.length },
-        { href: '/dashboard/parent/settings', label: 'Settings', icon: 'S' }
-      ]} />
     </main>
   );
 }

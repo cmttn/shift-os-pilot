@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import CoachComplianceForm from '@/components/dashboard/CoachComplianceForm';
-import BottomNav from '@/components/mobile/BottomNav';
 import { getCoachData } from '@/lib/dashboard/getCoachData';
 import { createClient } from '@/lib/supabase/server';
 
@@ -102,13 +101,6 @@ export default async function CoachProfilePage() {
           />
         </div>
       </div>
-      <BottomNav primaryColour={primaryColour} items={[
-        { href: '/dashboard/coach', label: 'Squad', icon: 'S' },
-        { href: '/dashboard/coach/schedule', label: 'Schedule', icon: 'C' },
-        { href: '/dashboard/coach/tickets', label: 'Tickets', icon: 'T' },
-        { href: '/dashboard/coach/profile', label: 'Profile', icon: 'P' },
-        { href: '/dashboard/coach/settings', label: 'Settings', icon: 'S' }
-      ]} />
     </main>
   );
 }

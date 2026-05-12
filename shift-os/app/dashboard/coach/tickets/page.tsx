@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import TicketStatusActions from '@/components/dashboard/TicketStatusActions';
-import BottomNav from '@/components/mobile/BottomNav';
 import { getCoachData } from '@/lib/dashboard/getCoachData';
 import { createClient } from '@/lib/supabase/server';
 import { COACH_TICKET_TYPES, PARENT_TICKET_TYPES, type TicketStatus, type TicketTypeDefinition } from '@/lib/tools/ticketTypes';
@@ -95,7 +94,6 @@ export default async function CoachTicketsPage({ searchParams }: CoachTicketsPag
   ]);
   const incoming = (incomingData ?? []) as TicketRow[];
   const raised = (raisedData ?? []) as TicketRow[];
-  const openIncoming = incoming.filter((ticket) => ticket.status === 'open').length;
 
   return (
     <main className="min-h-screen px-5 pb-24 pt-8 text-white md:ml-[260px]" style={{ backgroundColor: '#080a0f' }}>
@@ -120,13 +118,6 @@ export default async function CoachTicketsPage({ searchParams }: CoachTicketsPag
           </div>
         </section>
       </div>
-      <BottomNav primaryColour={primaryColour} items={[
-        { href: '/dashboard/coach', label: 'Squad', icon: 'S' },
-        { href: '/dashboard/coach/schedule', label: 'Schedule', icon: 'C' },
-        { href: '/dashboard/coach/tickets', label: 'Tickets', icon: 'T', badgeCount: openIncoming },
-        { href: '/dashboard/coach/profile', label: 'Profile', icon: 'P' },
-        { href: '/dashboard/coach/settings', label: 'Settings', icon: 'S' }
-      ]} />
     </main>
   );
 }

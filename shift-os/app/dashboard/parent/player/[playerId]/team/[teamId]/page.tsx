@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation';
 import ParentFixturesClient from '@/components/dashboard/ParentFixturesClient';
 import { GoalAwardTrigger, type GoalAwardSession } from '@/components/dashboard/GoalAwardSheet';
 import ParentQuickSwitcher, { type ParentQuickSwitchOption } from '@/components/dashboard/ParentQuickSwitcher';
-import BottomNav from '@/components/mobile/BottomNav';
 import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
 import { createClient } from '@/lib/supabase/server';
 import { getCategoryMeta, getCurrentSeason, MILESTONES, type MilestoneId, type ParentStarCategory } from '@/lib/tools/starCategories';
@@ -134,7 +133,6 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
 
   const hasMultiplePlayers = data.players.length > 1;
   const hasMultipleTeams = player.teams.length > 1;
-  const singleContext = !hasMultiplePlayers && !hasMultipleTeams;
   const heroSession = team.upcoming_sessions[0] ?? null;
   const backUrl = hasMultiplePlayers
     ? '/dashboard/parent'
@@ -181,13 +179,6 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
   const awardedSessionIds = new Set(((awardedPastGoals ?? []) as Array<{ session_id: string | null }>).map((row) => row.session_id).filter((id): id is string => Boolean(id)));
   const unawardedSession = pastSessions.find((session) => !awardedSessionIds.has(session.id)) ?? null;
   const goalsTotal = goalTotal?.total_stars ?? 0;
-  const { count: openTicketCount } = await supabase
-    .from('tickets')
-    .select('id', { count: 'exact', head: true })
-    .eq('raised_by', data.userId)
-    .eq('team_id', team.team_id)
-    .neq('status', 'resolved');
-
   const scoreline = (
     <Link
       href={`/dashboard/parent/stars/${player.id}`}
@@ -349,14 +340,6 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
         ) : null}
         <ParentFixturesClient playerId={player.id} playerName={player.full_name} team={team} heroSessionId={heroSession?.id ?? null} beforeHero={beforeHero} afterSchedule={milestoneStrip} />
       </section>
-
-      {singleContext ? <BottomNav primaryColour={team.club_primary_colour} items={[
-        { href: `/dashboard/parent/player/${player.id}/team/${team.team_id}`, label: 'Home', icon: 'H' },
-        { href: `/dashboard/parent/player/${player.id}/team/${team.team_id}`, label: 'Fixtures', icon: 'F' },
-        { href: `/dashboard/parent/player/${player.id}/team/${team.team_id}`, label: 'Avail', icon: 'A' },
-        { href: '/dashboard/parent/tickets', label: 'Tickets', icon: 'T', badgeCount: openTicketCount ?? 0 },
-        { href: '/dashboard/parent/settings', label: 'Settings', icon: 'S' }
-      ]} /> : null}
     </main>
   );
 }
