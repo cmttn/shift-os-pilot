@@ -21,6 +21,10 @@ export default async function CoachLayout({ children }: { children: ReactNode })
     return <>{children}</>;
   }
 
+  if (coachData.teams.length === 0) {
+    return <>{children}</>;
+  }
+
   const activeTeam = coachData.teams[0] ?? null;
   const primaryColour = activeTeam?.club_primary_colour ?? '#00C851';
   const title = activeTeam?.name ?? coachData.coach.full_name;
