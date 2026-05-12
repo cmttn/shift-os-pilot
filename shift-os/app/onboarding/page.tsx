@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, MouseEvent, TouchEvent, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { contrastText } from '@/lib/utils/contrastText'
 
 interface EyeDropper {
   open(): Promise<{ sRGBHex: string }>
@@ -290,7 +291,7 @@ export default function OnboardingPage() {
             </section>
 
             {form.error && <p className="rounded-lg border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-300">{form.error}</p>}
-            <button disabled={form.loading} className="w-full rounded-xl py-4 text-lg font-bold text-white" style={{ backgroundColor: form.primaryColour }}>
+            <button disabled={form.loading} className="w-full rounded-xl py-4 text-lg font-bold" style={{ backgroundColor: form.primaryColour, color: contrastText(form.primaryColour) }}>
               {form.loading ? '⏳ Launching...' : 'Launch My Club →'}
             </button>
           </form>

@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { contrastText as getContrastText } from '@/lib/utils/contrastText';
 
 type PlayerMode = 'invite' | 'new' | 'attach';
 
@@ -42,15 +43,6 @@ interface InviteResult {
 
 const ageGroups = ['U6', 'U7', 'U8', 'U9', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'Open Age', 'Veterans'];
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function getContrastText(hexColour: string): string {
-  const hex = hexColour.replace('#', '');
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5 ? '#000000' : '#ffffff';
-}
 
 function darkenHex(hex: string, percent: number): string {
   const num = parseInt(hex.replace('#', ''), 16);

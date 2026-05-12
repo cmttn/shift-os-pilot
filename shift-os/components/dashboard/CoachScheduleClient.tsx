@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
+import { contrastText } from '@/lib/utils/contrastText';
 
 interface CoachScheduleClientProps {
   data: CoachDashboardData;
@@ -19,6 +20,7 @@ export default function CoachScheduleClient({ data }: CoachScheduleClientProps) 
   const [sessions, setSessions] = useState(data.upcomingSessions);
   const [draftLinks, setDraftLinks] = useState<Record<string, string>>({});
   const primaryColour = data.teams[0]?.club_primary_colour ?? '#00C851';
+  const primaryText = contrastText(primaryColour);
 
   async function saveLink(sessionId: string) {
     const link = draftLinks[sessionId]?.trim();
@@ -28,14 +30,14 @@ export default function CoachScheduleClient({ data }: CoachScheduleClientProps) 
   }
 
   return (
-    <main className="min-h-screen px-5 pb-[92px] pt-8 text-white md:ml-[260px] md:px-8" style={{ backgroundColor: '#080a0f' }}>
+    <main className="min-h-screen px-5 pb-32 pt-8 text-white md:ml-[260px] md:px-8 md:pb-10" style={{ backgroundColor: '#080a0f' }}>
       <div className="mx-auto max-w-[900px]">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-white/30">Coach Schedule</p>
             <h1 className="mt-3 text-3xl font-black">Schedule</h1>
           </div>
-          <Link href="/dashboard/coach/sessions/new" className="rounded-full px-5 py-2 text-sm font-semibold text-black" style={{ backgroundColor: primaryColour }}>Add Session +</Link>
+          <Link href="/dashboard/coach/sessions/new" className="rounded-full px-5 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: primaryText }}>Add Session +</Link>
         </div>
         <div className="mt-8 space-y-4">
           {sessions.map((session) => (
@@ -55,7 +57,7 @@ export default function CoachScheduleClient({ data }: CoachScheduleClientProps) 
                     <p className="mt-1 text-sm text-white/35">Paste your Tournify link to share the bracket with parents.</p>
                     <div className="mt-3 flex gap-2">
                       <input value={draftLinks[session.id] ?? ''} onChange={(event) => setDraftLinks((current) => ({ ...current, [session.id]: event.target.value }))} className="min-w-0 flex-1 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm text-white outline-none" placeholder="https://..." />
-                      <button type="button" onClick={() => saveLink(session.id)} className="rounded-full px-4 py-2 text-sm font-semibold text-black" style={{ backgroundColor: primaryColour }}>Save</button>
+                      <button type="button" onClick={() => saveLink(session.id)} className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: primaryText }}>Save</button>
                     </div>
                   </div>
                 )
@@ -63,8 +65,8 @@ export default function CoachScheduleClient({ data }: CoachScheduleClientProps) 
             </article>
           ))}
         </div>
-        <details className="group fixed bottom-8 right-8 z-50">
-          <summary className="flex h-14 w-14 cursor-pointer list-none items-center justify-center rounded-full text-2xl font-semibold text-black shadow-2xl [&::-webkit-details-marker]:hidden" style={{ backgroundColor: primaryColour }}>+</summary>
+        <details className="group fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8">
+          <summary className="flex h-14 w-14 cursor-pointer list-none items-center justify-center rounded-full text-2xl font-semibold shadow-2xl [&::-webkit-details-marker]:hidden" style={{ backgroundColor: primaryColour, color: primaryText }}>+</summary>
           <div className="absolute bottom-16 right-0 flex flex-col items-end gap-2">
             {['match', 'training', 'tournament'].map((type) => <Link key={type} href={`/dashboard/coach/sessions/new?type=${type}`} className="whitespace-nowrap rounded-full border border-white/10 bg-[#161b27] px-4 py-2 text-sm capitalize text-white">{type}</Link>)}
           </div>

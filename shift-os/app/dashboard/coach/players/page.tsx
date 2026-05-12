@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import PlayerInviteButton from '@/components/dashboard/PlayerInviteButton';
 import { getCoachData } from '@/lib/dashboard/getCoachData';
+import { contrastText } from '@/lib/utils/contrastText';
 
 export default async function CoachPlayersPage() {
   const data = await getCoachData();
   if (!data) redirect('/dashboard/coach/welcome');
   const primaryColour = data.teams[0]?.club_primary_colour ?? '#00C851';
+  const primaryText = contrastText(primaryColour);
   const getStatus = (player: typeof data.players[number]): { label: string; colour: string } => {
     if (player.parent_user_id || player.invite_status === 'accepted') return { label: 'Accepted', colour: '#10b981' };
     if (player.invite_status === 'sent') return { label: 'Invite sent', colour: '#f59e0b' };
@@ -21,7 +23,7 @@ export default async function CoachPlayersPage() {
             <p className="text-xs uppercase tracking-[0.28em] text-white/30">Players</p>
             <h1 className="mt-3 text-3xl font-black">Squad</h1>
           </div>
-          <Link href="/dashboard/coach/players/new" className="rounded-full px-4 py-2 text-sm font-bold text-black" style={{ backgroundColor: primaryColour }}>Add Player</Link>
+          <Link href="/dashboard/coach/players/new" className="rounded-full px-4 py-2 text-sm font-bold" style={{ backgroundColor: primaryColour, color: primaryText }}>Add Player</Link>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {data.players.length === 0 ? <p className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 text-sm text-white/40">No players yet.</p> : data.players.map((player) => (

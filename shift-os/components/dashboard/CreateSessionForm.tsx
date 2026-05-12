@@ -4,18 +4,25 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 import { createClient } from '@/lib/supabase/client';
+import { contrastText } from '@/lib/utils/contrastText';
 
 type SessionType = 'match' | 'training' | 'tournament';
 
 interface CreateSessionFormProps {
   coachData: CoachDashboardData;
+  initialType?: SessionType;
 }
 
-export default function CreateSessionForm({ coachData }: CreateSessionFormProps) {
+function getUrlSessionType(value: string | null): SessionType | null {
+  if (value === 'match' || value === 'training' || value === 'tournament') return value;
+  return null;
+}
+
+export default function CreateSessionForm({ coachData, initialType }: CreateSessionFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const defaultType = searchParams.get('type');
-  const [type, setType] = useState<SessionType>(defaultType === 'training' || defaultType === 'tournament' ? defaultType : 'match');
+  const defaultType = initialType ?? getUrlSessionType(searchParams.get('type')) ?? 'match';
+  const [type, setType] = useState<SessionType>(defaultType);
   const [teamId, setTeamId] = useState(coachData.activeTeamId);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -35,6 +42,7 @@ export default function CreateSessionForm({ coachData }: CreateSessionFormProps)
 
   const activeTeam = coachData.teams.find((team) => team.id === teamId) ?? coachData.teams[0] ?? null;
   const primaryColour = activeTeam?.club_primary_colour ?? '#00C851';
+  const primaryText = contrastText(primaryColour);
   const players = useMemo(() => coachData.players.filter((player) => player.team_id === teamId), [coachData.players, teamId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -92,7 +100,7 @@ export default function CreateSessionForm({ coachData }: CreateSessionFormProps)
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-3 gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
         {(['match', 'training', 'tournament'] as SessionType[]).map((option) => (
-          <button key={option} type="button" onClick={() => setType(option)} className="rounded-full px-3 py-2 text-sm font-semibold capitalize transition-all duration-300 ease-out" style={type === option ? { backgroundColor: primaryColour, color: '#ffffff' } : { color: 'rgba(255,255,255,0.45)' }}>
+          <button key={option} type="button" onClick={() => setType(option)} className="rounded-full px-3 py-2 text-sm font-semibold capitalize transition-all duration-300 ease-out" style={type === option ? { backgroundColor: primaryColour, color: primaryText } : { color: 'rgba(255,255,255,0.45)' }}>
             {option}
           </button>
         ))}
@@ -110,7 +118,7 @@ export default function CreateSessionForm({ coachData }: CreateSessionFormProps)
           <input value={opponent} onChange={(event) => setOpponent(event.target.value)} className={inputClass} placeholder="Opponent" />
           <div className="grid grid-cols-2 gap-2">
             {[true, false].map((home) => (
-              <button key={String(home)} type="button" onClick={() => setIsHome(home)} className="rounded-full border px-4 py-3 text-sm font-semibold transition-all duration-300 ease-out" style={isHome === home ? { backgroundColor: primaryColour, borderColor: primaryColour, color: '#ffffff' } : { borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }}>
+              <button key={String(home)} type="button" onClick={() => setIsHome(home)} className="rounded-full border px-4 py-3 text-sm font-semibold transition-all duration-300 ease-out" style={isHome === home ? { backgroundColor: primaryColour, borderColor: primaryColour, color: primaryText } : { borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }}>
                 {home ? 'Home' : 'Away'}
               </button>
             ))}
@@ -146,7 +154,7 @@ export default function CreateSessionForm({ coachData }: CreateSessionFormProps)
       </section>
 
       {error ? <p className="text-sm text-red-200">{error}</p> : null}
-      <button disabled={loading} type="submit" className="w-full rounded-full px-6 py-4 font-semibold text-white transition-all duration-300 ease-out disabled:opacity-50" style={{ backgroundColor: primaryColour }}>
+      <button disabled={loading} type="submit" className="w-full rounded-full px-6 py-4 font-semibold transition-all duration-300 ease-out disabled:opacity-50" style={{ backgroundColor: primaryColour, color: primaryText }}>
         {loading ? 'Creating Session...' : 'Create Session →'}
       </button>
     </form>

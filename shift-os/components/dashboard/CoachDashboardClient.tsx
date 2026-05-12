@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
+import { contrastText as getContrastText } from '@/lib/utils/contrastText';
 
 const tools = [
   ['game_time_tracker', 'Game Time Tracker', 'Free', 'Track minutes played per player', '/dashboard/coach'],
@@ -48,15 +49,6 @@ interface QuickInviteResult {
   teamName: string;
   inviteUrl: string;
   message: string;
-}
-
-function getContrastText(hexColour: string): string {
-  const hex = hexColour.replace('#', '');
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5 ? '#000000' : '#ffffff';
 }
 
 function initials(name: string): string {

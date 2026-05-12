@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { generateJoinCode } from '@/lib/utils/generateJoinCode';
+import { contrastText } from '@/lib/utils/contrastText';
 
 type Gender = 'boys' | 'girls' | 'mixed';
 
@@ -57,6 +58,25 @@ function getColourScore(red: number, green: number, blue: number): number {
   return saturation * 1.6 + balancedBrightness * 0.4;
 }
 
+function colourDistance(hex1: string, hex2: string): number {
+  const r1 = parseInt(hex1.slice(1, 3), 16);
+  const g1 = parseInt(hex1.slice(3, 5), 16);
+  const b1 = parseInt(hex1.slice(5, 7), 16);
+  const r2 = parseInt(hex2.slice(1, 3), 16);
+  const g2 = parseInt(hex2.slice(3, 5), 16);
+  const b2 = parseInt(hex2.slice(5, 7), 16);
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+}
+
+function deduplicateColours(colours: string[], minDistance = 80): string[] {
+  const result: string[] = [];
+  for (const colour of colours) {
+    const tooClose = result.some((existingColour) => colourDistance(existingColour, colour) < minDistance);
+    if (!tooClose) result.push(colour);
+  }
+  return result.slice(0, 6);
+}
+
 async function extractColoursFromImage(imageUrl: string): Promise<string[]> {
   const image = new Image();
   image.decoding = 'async';
@@ -101,7 +121,7 @@ async function extractColoursFromImage(imageUrl: string): Promise<string[]> {
     buckets.set(key, current);
   }
 
-  return Array.from(buckets.values())
+  const rankedColours = Array.from(buckets.values())
     .map((bucket) => {
       const red = Math.round(bucket.red / bucket.count);
       const green = Math.round(bucket.green / bucket.count);
@@ -113,8 +133,9 @@ async function extractColoursFromImage(imageUrl: string): Promise<string[]> {
     })
     .sort((a, b) => b.score - a.score)
     .map((colour) => colour.hex)
-    .filter((colour, index, allColours) => allColours.indexOf(colour) === index)
-    .slice(0, 6);
+    .filter((colour, index, allColours) => allColours.indexOf(colour) === index);
+
+  return deduplicateColours(rankedColours);
 }
 
 export default function CoachCreateTeamForm({ userId }: CoachCreateTeamFormProps) {
@@ -319,6 +340,7 @@ export default function CoachCreateTeamForm({ userId }: CoachCreateTeamFormProps
           {extractedColours.length > 0 ? (
             <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Badge colours</p>
+              <p className="mt-2 text-xs text-white/40">Tap a colour to set it as your Primary or Secondary club colour.</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {extractedColours.map((colour) => (
                   <div key={colour} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -327,11 +349,35 @@ export default function CoachCreateTeamForm({ userId }: CoachCreateTeamFormProps
                       {colour.toUpperCase()}
                     </span>
                     <span className="flex gap-2">
-                      <button type="button" onClick={() => setPrimaryColour(colour)} className="rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/10">P</button>
-                      <button type="button" onClick={() => setSecondaryColour(colour)} className="rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-white/70 transition hover:bg-white/10">S</button>
+                      <button
+                        type="button"
+                        onClick={() => setPrimaryColour(colour)}
+                        className="rounded-full border px-3 py-1 text-xs font-semibold transition hover:bg-white/10"
+                        style={primaryColour === colour ? { backgroundColor: colour, borderColor: colour, color: contrastText(colour) } : { borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}
+                      >
+                        Primary
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSecondaryColour(colour)}
+                        className="rounded-full border px-3 py-1 text-xs font-semibold transition hover:bg-white/10"
+                        style={secondaryColour === colour ? { backgroundColor: colour, borderColor: colour, color: contrastText(colour) } : { borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)' }}
+                      >
+                        Secondary
+                      </button>
                     </span>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 grid gap-2 text-xs text-white/45 sm:grid-cols-2">
+                <p className="flex items-center gap-2">
+                  <span className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: primaryColour }} />
+                  Primary colour selected: {primaryColour.toUpperCase()}
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: secondaryColour }} />
+                  Secondary colour selected: {secondaryColour.toUpperCase()}
+                </p>
               </div>
             </div>
           ) : null}
@@ -346,7 +392,7 @@ export default function CoachCreateTeamForm({ userId }: CoachCreateTeamFormProps
           </select>
           <div className="grid grid-cols-3 gap-2">
             {(['boys', 'girls', 'mixed'] as Gender[]).map((option) => (
-              <button key={option} type="button" onClick={() => setGender(option)} className="rounded-full border px-4 py-3 text-sm font-semibold capitalize transition-all duration-300 ease-out" style={gender === option ? { backgroundColor: primaryColour, borderColor: primaryColour, color: '#020617' } : { borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(226,232,240,0.72)' }}>
+              <button key={option} type="button" onClick={() => setGender(option)} className="rounded-full border px-4 py-3 text-sm font-semibold capitalize transition-all duration-300 ease-out" style={gender === option ? { backgroundColor: primaryColour, borderColor: primaryColour, color: contrastText(primaryColour) } : { borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(226,232,240,0.72)' }}>
                 {option}
               </button>
             ))}
