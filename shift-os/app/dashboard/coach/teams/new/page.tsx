@@ -10,6 +10,15 @@ export default async function CoachNewTeamPage() {
   } = await supabase.auth.getSession();
   if (!session) redirect('/auth/login');
 
+  const { count: assignedTeamCount } = await supabase
+    .from('team_coaches')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', session.user.id);
+
+  if ((assignedTeamCount ?? 0) > 0) {
+    redirect('/dashboard/coach');
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 px-5 py-10 text-slate-100">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.18),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(99,102,241,0.18),transparent_36%),radial-gradient(circle_at_50%_100%,rgba(14,165,233,0.1),transparent_45%)]" />

@@ -70,7 +70,7 @@ export async function middleware(request: NextRequest) {
     .eq('is_active', true)
     .order('joined_at', { ascending: true })
     .limit(1)
-    .single<ClubMembership>();
+    .maybeSingle<ClubMembership>();
 
   const clubRole = membership?.club_role ?? null;
   console.log('[middleware] clubRole', clubRole, 'user', session.user.id, 'path', pathname);
@@ -80,6 +80,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (clubRole === 'coach') {
+    if (isOnRoute(pathname, '/dashboard/coach/welcome') || isOnRoute(pathname, '/dashboard/coach/teams/new')) {
+      return redirectTo(request, '/dashboard/coach');
+    }
+
     return isOnRoute(pathname, '/dashboard/coach') ? response : redirectTo(request, '/dashboard/coach');
   }
 

@@ -10,6 +10,15 @@ export default async function CoachWelcomePage() {
   } = await supabase.auth.getSession();
   if (!session) redirect('/auth/login');
 
+  const { count: assignedTeamCount } = await supabase
+    .from('team_coaches')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', session.user.id);
+
+  if ((assignedTeamCount ?? 0) > 0) {
+    redirect('/dashboard/coach');
+  }
+
   const { data: profile } = await supabase.from('users_profile').select('full_name').eq('id', session.user.id).maybeSingle<{ full_name: string | null }>();
   const coachName = profile?.full_name?.trim() || session.user.user_metadata.full_name || 'Coach';
   const coachEmail = session.user.email ?? 'coach@shift-os.local';
