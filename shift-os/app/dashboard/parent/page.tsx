@@ -85,7 +85,14 @@ function PlayerCard({ player, allSameClub, globalPrimaryColour, compact }: {
   );
 }
 
-export default async function ParentDashboardPage() {
+interface ParentDashboardPageProps {
+  searchParams?: {
+    invite_accepted?: string;
+    invite_error?: string;
+  };
+}
+
+export default async function ParentDashboardPage({ searchParams }: ParentDashboardPageProps) {
   const data = await getParentDashboardData();
   if (!data) redirect('/dashboard/player/welcome');
 
@@ -101,6 +108,11 @@ export default async function ParentDashboardPage() {
   const globalClubName = data.globalClubName ?? 'SHIFT/OS';
   const primary = data.globalPrimaryColour;
   const contrastText = getContrastText(primary);
+  const inviteMessage = searchParams?.invite_error === 'already_linked'
+    ? 'That invite is already linked to another parent account.'
+    : searchParams?.invite_accepted === 'true'
+      ? 'Your new player has been added to your account ✓'
+      : null;
 
   return (
     <main className="min-h-screen text-white" style={{ background }}>
@@ -110,6 +122,7 @@ export default async function ParentDashboardPage() {
             <h1 className="text-3xl font-black text-white">Welcome, {data.parentFirstName}</h1>
             <p className="mt-2 text-sm text-white/40">Here&apos;s who you&apos;re following</p>
           </header>
+          {inviteMessage ? <p className="mb-4 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4 text-sm text-emerald-100">{inviteMessage}</p> : null}
 
           {data.players.length === 0 ? (
             <section className="mt-10 text-center">
@@ -157,6 +170,7 @@ export default async function ParentDashboardPage() {
 
         <section className="min-h-screen overflow-y-auto px-12 py-[60px]" style={{ backgroundColor: '#080a0f' }}>
           <h2 className="mb-6 text-sm font-semibold uppercase tracking-[0.24em] text-white/30">Your Players</h2>
+          {inviteMessage ? <p className="mb-5 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4 text-sm text-emerald-100">{inviteMessage}</p> : null}
           {data.players.length === 0 ? (
             <section className="rounded-2xl border border-white/[0.06] p-10 text-center" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)' }}>
               <p className="text-6xl">👤</p>

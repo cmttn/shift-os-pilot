@@ -84,6 +84,12 @@ function formatCompactSessionDate(value: string): string {
   return `${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · KO ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+function getInviteDot(player: CoachDashboardData['players'][number]): { colour: string; label: string } {
+  if (player.parent_user_id || player.invite_status === 'accepted') return { colour: '#10b981', label: 'Parent linked' };
+  if (player.invite_status === 'sent') return { colour: '#f59e0b', label: 'Invite sent' };
+  return { colour: 'rgba(255,255,255,0.35)', label: 'Not yet invited' };
+}
+
 export default function CoachDashboardClient({ data }: CoachDashboardClientProps) {
   const [activeTeamId, setActiveTeamId] = useState(data.activeTeamId);
   const [recentPotm, setRecentPotm] = useState<RecentPotm | null>(null);
@@ -193,7 +199,10 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {teamPlayers.map((player) => (
                   <article key={player.id} className="rounded-[14px] border p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/15" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: primaryColour, color: contrastText }}>{initials(player.full_name)}</div>
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: primaryColour, color: contrastText }}>
+                      {initials(player.full_name)}
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ring-[#0d1117]" style={{ backgroundColor: getInviteDot(player).colour }} title={getInviteDot(player).label} />
+                    </div>
                     <h2 className="mt-2 text-sm font-semibold text-white">{player.full_name}</h2>
                     {player.dob ? <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}{calculateAge(player.dob) ? ` / ${calculateAge(player.dob)}` : ''}</p> : null}
                   </article>
@@ -244,7 +253,10 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
               <div className="mt-5 grid grid-cols-2 gap-3">
                 {teamPlayers.map((player) => (
                   <article key={player.id} className="rounded-[14px] border p-4" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: primaryColour, color: contrastText }}>{initials(player.full_name)}</div>
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: primaryColour, color: contrastText }}>
+                      {initials(player.full_name)}
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ring-[#0d1117]" style={{ backgroundColor: getInviteDot(player).colour }} title={getInviteDot(player).label} />
+                    </div>
                     <h2 className="mt-2 text-sm font-semibold text-white">{player.full_name}</h2>
                     {player.dob ? <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}</p> : null}
                   </article>

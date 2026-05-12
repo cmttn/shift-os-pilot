@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { FormEvent, Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { completePendingInvite } from '@/lib/auth/completeInvite';
+import { completePlayerInvite } from '@/lib/auth/completePlayerInvite';
 import { createClient } from '@/lib/supabase/client';
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intendedRole = searchParams.get('role');
-  const inviteToken = searchParams.get('invite');
+  const inviteToken = searchParams.get('invite_token') ?? searchParams.get('invite');
   const clubId = searchParams.get('club');
   const teamId = searchParams.get('team');
   const playerId = searchParams.get('player');
@@ -47,11 +48,13 @@ function SignupForm() {
     const supabase = createClient();
     const normalizedEmail = email.trim().toLowerCase();
     const nextPath = inviteToken ? '/dashboard' : intendedRole === 'club_admin' || !intendedRole ? '/onboarding' : '/dashboard';
+    const callbackParams = new URLSearchParams({ next: nextPath });
+    if (inviteToken) callbackParams.set('invite_token', inviteToken);
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?${callbackParams.toString()}`,
         data: {
           full_name: fullName.trim(),
           intended_role: intendedRole,
@@ -85,6 +88,12 @@ function SignupForm() {
     }
 
     try {
+      const playerInviteRedirect = await completePlayerInvite(supabase, data.user.id, inviteToken);
+      if (playerInviteRedirect) {
+        router.push(playerInviteRedirect);
+        router.refresh();
+        return;
+      }
       const inviteRedirect = await completePendingInvite(supabase, data.user.id, data.user.user_metadata);
       router.push(inviteRedirect ?? nextPath);
       router.refresh();
@@ -106,7 +115,7 @@ function SignupForm() {
           <p className="text-sm text-rose-400">
             {error}{' '}
             {error === 'An account with this email already exists.' && (
-              <Link href="/auth/login" className="font-medium text-indigo-300 underline">Go to login</Link>
+              <Link href={`/auth/login${inviteToken ? `?invite_token=${encodeURIComponent(inviteToken)}` : ''}`} className="font-medium text-indigo-300 underline">Go to login</Link>
             )}
           </p>
         )}

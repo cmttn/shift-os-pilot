@@ -19,12 +19,9 @@ export interface CoachPlayerRecord {
   full_name: string;
   age_group: string | null;
   date_of_birth: string | null;
-  guardian_1_name: string | null;
-  guardian_1_phone: string | null;
-  guardian_1_email: string | null;
-  guardian_2_name: string | null;
-  guardian_2_phone: string | null;
-  guardian_2_email: string | null;
+  parent_user_id: string | null;
+  invite_token: string | null;
+  invite_status: string | null;
 }
 
 export interface CoachDashboardData {
@@ -57,15 +54,13 @@ interface RawCoachTeamRecord {
 interface RawCoachPlayerRecord {
   id: string;
   team_id: string | null;
-  full_name: string;
+  first_name: string | null;
+  last_name: string | null;
   age_group: string | null;
-  date_of_birth: string | null;
-  guardian_1_name: string | null;
-  guardian_1_phone: string | null;
-  guardian_1_email: string | null;
-  guardian_2_name: string | null;
-  guardian_2_phone: string | null;
-  guardian_2_email: string | null;
+  dob: string | null;
+  parent_user_id: string | null;
+  invite_token: string | null;
+  invite_status: string | null;
 }
 
 export interface PendingJoinRequestRecord {
@@ -116,10 +111,10 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
             .order('name', { ascending: true }),
           supabase
             .from('players')
-            .select('id,team_id,full_name,age_group,date_of_birth,guardian_1_name,guardian_1_phone,guardian_1_email,guardian_2_name,guardian_2_phone,guardian_2_email')
+            .select('id,team_id,first_name,last_name,age_group,dob,parent_user_id,invite_token,invite_status')
             .in('team_id', teamIds)
             .eq('is_active', true)
-            .order('full_name', { ascending: true }),
+            .order('first_name', { ascending: true }),
           supabase
             .from('pending_join_requests')
             .select('id,team_id,full_name,dob,parent_name,parent_contact,created_at')
@@ -133,7 +128,16 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
           { data: [] as PendingJoinRequestRecord[] }
         ];
 
-  const players = (playersRes.data ?? []) as CoachPlayerRecord[];
+  const players = ((playersRes.data ?? []) as RawCoachPlayerRecord[]).map((player) => ({
+    id: player.id,
+    team_id: player.team_id,
+    full_name: [player.first_name, player.last_name].map((part) => part?.trim()).filter(Boolean).join(' ') || 'Player',
+    age_group: player.age_group,
+    date_of_birth: player.dob,
+    parent_user_id: player.parent_user_id,
+    invite_token: player.invite_token,
+    invite_status: player.invite_status
+  }));
   const rawTeams = (teamsRes.data ?? []) as RawCoachTeamRecord[];
   const membershipClub = membership?.clubs;
   const memberClub = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;

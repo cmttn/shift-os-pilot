@@ -24,6 +24,9 @@ export interface CoachDashboardData {
     full_name: string;
     dob: string | null;
     is_active: boolean;
+    parent_user_id: string | null;
+    invite_token: string | null;
+    invite_status: string | null;
   }>;
   upcomingSessions: Array<{
     id: string;
@@ -81,6 +84,9 @@ interface RawPlayer {
   last_name: string | null;
   dob: string | null;
   is_active: boolean | null;
+  parent_user_id: string | null;
+  invite_token: string | null;
+  invite_status: string | null;
 }
 
 interface RawSession {
@@ -164,7 +170,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       .order('name', { ascending: true }),
     supabase
       .from('players')
-      .select('id,team_id,first_name,last_name,dob,is_active')
+      .select('id,team_id,first_name,last_name,dob,is_active,parent_user_id,invite_token,invite_status')
       .in('team_id', teamIds)
       .order('first_name', { ascending: true }),
     supabase
@@ -203,7 +209,10 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       last_name: names.lastName,
       full_name: names.fullName,
       dob: player.dob ?? null,
-      is_active: player.is_active ?? true
+      is_active: player.is_active ?? true,
+      parent_user_id: player.parent_user_id ?? null,
+      invite_token: player.invite_token ?? null,
+      invite_status: player.invite_status ?? null
     };
   });
 

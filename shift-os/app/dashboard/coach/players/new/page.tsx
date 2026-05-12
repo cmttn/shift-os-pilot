@@ -9,13 +9,16 @@ interface ClubPlayerOption {
   fullName: string;
   ageGroup: string | null;
   teamId: string | null;
+  inviteToken: string | null;
 }
 
 interface RawClubPlayer {
   id: string;
-  full_name: string;
+  first_name: string | null;
+  last_name: string | null;
   age_group: string | null;
   team_id: string | null;
+  invite_token: string | null;
 }
 
 export default async function NewPlayerPage() {
@@ -23,21 +26,23 @@ export default async function NewPlayerPage() {
   if (!coachData) redirect('/dashboard/club');
 
   const supabase = await createClient();
+  const assignedTeamIds = coachData.teams.map((team) => team.id);
   const { data: clubPlayersData } =
-    coachData.club.id === 'independent'
+    coachData.club.id === 'independent' || assignedTeamIds.length === 0
       ? { data: [] as RawClubPlayer[] }
       : await supabase
           .from('players')
-          .select('id,full_name,age_group,team_id')
-          .eq('club_id', coachData.club.id)
-          .eq('is_active', true)
-          .order('full_name', { ascending: true });
+          .select('id,first_name,last_name,age_group,team_id,invite_token')
+            .in('team_id', assignedTeamIds)
+            .eq('is_active', true)
+            .order('first_name', { ascending: true });
 
   const clubPlayers: ClubPlayerOption[] = ((clubPlayersData ?? []) as RawClubPlayer[]).map((player) => ({
     id: player.id,
-    fullName: player.full_name,
+    fullName: [player.first_name, player.last_name].map((part) => part?.trim()).filter(Boolean).join(' ') || 'Player',
     ageGroup: player.age_group,
-    teamId: player.team_id
+    teamId: player.team_id,
+    inviteToken: player.invite_token
   }));
 
   const teams = coachData.teams.map((team) => ({

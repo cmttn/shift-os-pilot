@@ -17,6 +17,7 @@ interface ClubPlayerOption {
   fullName: string;
   ageGroup: string | null;
   teamId: string | null;
+  inviteToken: string | null;
 }
 
 interface AddPlayerFormProps {
@@ -29,6 +30,13 @@ interface AddPlayerFormProps {
 
 interface SavedPlayer {
   id: string;
+}
+
+interface InviteResult {
+  playerId: string;
+  playerFirstName: string;
+  teamName: string;
+  inviteUrl: string;
 }
 
 const ageGroups = ['U6', 'U7', 'U8', 'U9', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'Open Age', 'Veterans'];
@@ -73,6 +81,8 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
   const [guardianTwoEmail, setGuardianTwoEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const selectedTeam = useMemo(() => teams.find((team) => team.id === teamId), [teamId, teams]);
 
@@ -84,33 +94,57 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
       if (!ageGroup) return 'Age group is required.';
       if (!dateOfBirth) return 'Date of birth is required.';
     }
-    if (!guardianOneName.trim()) return 'Guardian 1 name is required.';
-    if (!guardianOnePhone.trim()) return 'Guardian 1 phone is required.';
-    if (!guardianOneEmail.trim()) return 'Guardian 1 email is required.';
-    if (!emailPattern.test(guardianOneEmail.trim())) return 'Guardian 1 email must be valid.';
+    if (guardianOneEmail.trim() && !emailPattern.test(guardianOneEmail.trim())) return 'Guardian 1 email must be valid.';
     if (guardianTwoEmail.trim() && !emailPattern.test(guardianTwoEmail.trim())) return 'Guardian 2 email must be valid.';
     return null;
   };
 
-  const createParentInvite = async (playerId: string, name: string, email: string, phone: string): Promise<string> => {
-    if (!clubId) return '';
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { error: inviteError } = await createClient().from('pending_invites').insert({
-      club_id: clubId,
-      team_id: teamId,
-      player_id: playerId,
-      invited_by: invitedBy,
-      invite_token: token,
-      role: 'parent',
-      invitee_name: name.trim(),
-      invitee_email: email.trim(),
-      invitee_phone: phone.trim() || null,
-      is_lead: true,
-      expires_at: expiresAt
-    });
-    if (inviteError) throw inviteError;
-    return `${window.location.origin}/auth/signup?role=parent&invite=${token}&club=${clubId}&team=${teamId}&player=${playerId}`;
+  const getInviteUrl = (token: string): string => {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || window.location.origin;
+    return `${siteUrl}/invite/player/${token}`;
+  };
+
+  const getNameParts = (fullName: string): { firstName: string; lastName: string } => {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    return {
+      firstName: parts[0] ?? 'Player',
+      lastName: parts.slice(1).join(' ')
+    };
+  };
+
+  const resetFormForNextPlayer = () => {
+    setInviteResult(null);
+    setMode('new');
+    setPlayerName('');
+    setAgeGroup(teams[0]?.ageGroup ?? '');
+    setDateOfBirth('');
+    setGuardianOneName('');
+    setGuardianOnePhone('');
+    setGuardianOneEmail('');
+    setGuardianTwoName('');
+    setGuardianTwoPhone('');
+    setGuardianTwoEmail('');
+    setCopied(false);
+    router.refresh();
+  };
+
+  const copyInvite = async () => {
+    if (!inviteResult) return;
+    await createClient()
+      .from('players')
+      .update({ invite_status: 'sent', invite_sent_at: new Date().toISOString() })
+      .eq('id', inviteResult.playerId);
+    await navigator.clipboard.writeText(inviteResult.inviteUrl);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  const markInviteSent = async () => {
+    if (!inviteResult) return;
+    await createClient()
+      .from('players')
+      .update({ invite_status: 'sent', invite_sent_at: new Date().toISOString() })
+      .eq('id', inviteResult.playerId);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -125,23 +159,22 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
     setLoading(true);
     try {
       let playerId = existingPlayerId;
+      let inviteToken = crypto.randomUUID();
+      let savedFirstName = getNameParts(playerName).firstName;
 
       if (mode === 'new') {
+        const names = getNameParts(playerName);
+        savedFirstName = names.firstName;
         const { data, error: playerError } = await createClient()
           .from('players')
           .insert({
-            club_id: clubId,
             team_id: teamId,
-            full_name: playerName.trim(),
-            age_group: ageGroup,
-            date_of_birth: dateOfBirth,
-            guardian_1_name: guardianOneName.trim(),
-            guardian_1_phone: guardianOnePhone.trim(),
-            guardian_1_email: guardianOneEmail.trim(),
-            guardian_2_name: guardianTwoName.trim() || null,
-            guardian_2_phone: guardianTwoPhone.trim() || null,
-            guardian_2_email: guardianTwoEmail.trim() || null,
-            is_active: true
+            first_name: names.firstName,
+            last_name: names.lastName,
+            dob: dateOfBirth,
+            is_active: true,
+            invite_token: inviteToken,
+            invite_status: 'pending'
           })
           .select('id')
           .single();
@@ -151,34 +184,30 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
         if (!savedPlayer) throw new Error('Player could not be created.');
         playerId = savedPlayer.id;
       } else {
+        const existingPlayer = clubPlayers.find((player) => player.id === playerId);
+        const existingName = existingPlayer?.fullName ?? 'Player';
+        savedFirstName = getNameParts(existingName).firstName;
+        inviteToken = existingPlayer?.inviteToken ?? inviteToken;
         const { error: attachError } = await createClient()
           .from('players')
           .update({
             team_id: teamId,
-            guardian_1_name: guardianOneName.trim(),
-            guardian_1_phone: guardianOnePhone.trim(),
-            guardian_1_email: guardianOneEmail.trim(),
-            guardian_2_name: guardianTwoName.trim() || null,
-            guardian_2_phone: guardianTwoPhone.trim() || null,
-            guardian_2_email: guardianTwoEmail.trim() || null
+            invite_token: inviteToken,
+            invite_status: 'pending'
           })
           .eq('id', playerId)
-          .eq('club_id', clubId);
+          .is('parent_user_id', null);
         if (attachError) throw attachError;
       }
 
-      const primaryInviteUrl = await createParentInvite(playerId, guardianOneName, guardianOneEmail, guardianOnePhone);
-      const secondaryInviteUrl =
-        guardianTwoEmail.trim() && guardianTwoName.trim()
-          ? await createParentInvite(playerId, guardianTwoName, guardianTwoEmail, guardianTwoPhone)
-          : '';
-
-      const params = new URLSearchParams({
-        team_id: teamId,
-        invite_url: primaryInviteUrl
+      const inviteUrl = getInviteUrl(inviteToken);
+      setInviteResult({
+        playerId,
+        playerFirstName: savedFirstName,
+        teamName: selectedTeam?.name ?? 'the team',
+        inviteUrl
       });
-      if (secondaryInviteUrl) params.set('secondary_invite_url', secondaryInviteUrl);
-      router.push(`/dashboard/coach/players/${playerId}/success?${params.toString()}`);
+      setLoading(false);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Something went wrong while saving the player.');
       setLoading(false);
@@ -187,6 +216,33 @@ export default function AddPlayerForm({ clubId, invitedBy, primaryColour, teams,
 
   const fieldClass = 'w-full rounded-[10px] border p-4 text-white outline-none transition-all duration-300 ease-out placeholder:text-white/20 focus:border-white/30';
   const labelClass = 'mb-2 block text-sm font-medium text-white/50';
+
+  if (inviteResult) {
+    const whatsappMessage = `Hi! ${inviteResult.playerFirstName} has been added to ${inviteResult.teamName} on SHIFT OS.\n\nTap this link to set up your account and stay connected:\n${inviteResult.inviteUrl}`;
+    return (
+      <section className="max-w-[760px] rounded-2xl border p-8" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <p className="text-5xl font-black leading-none" style={{ color: primaryColour }}>✓</p>
+        <h2 className="mt-5 text-3xl font-black text-white">{inviteResult.playerFirstName} has been added to your squad</h2>
+
+        <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+          <p className="mb-3 text-sm text-white/50">Invite {inviteResult.playerFirstName}&apos;s parent</p>
+          <code className="block truncate rounded-xl bg-white/[0.06] px-4 py-3 font-mono text-sm text-white">{inviteResult.inviteUrl}</code>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <button type="button" onClick={copyInvite} className="rounded-full px-5 py-3 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]" style={{ backgroundColor: primaryColour, color: contrastText }}>
+              {copied ? 'Copied ✓' : 'Copy Link'}
+            </button>
+            <a href={`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`} onClick={() => { void markInviteSent(); }} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-5 py-3 text-center text-sm font-semibold text-white transition-all duration-300 ease-out hover:bg-white/[0.06]">
+              Share via WhatsApp
+            </a>
+          </div>
+        </div>
+
+        <button type="button" onClick={resetFormForNextPlayer} className="mt-6 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 ease-out hover:bg-white/[0.06]">
+          Add Another Player +
+        </button>
+      </section>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="max-w-[760px]">

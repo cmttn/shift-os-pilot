@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { completePlayerInvite } from '@/lib/auth/completePlayerInvite';
 import { createClient } from '@/lib/supabase/client';
 
 type ClubMemberLookup = { id: string };
@@ -10,6 +11,7 @@ type ClubMemberLookup = { id: string };
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const inviteToken = searchParams.get('invite_token');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -44,6 +46,15 @@ function LoginForm() {
         return;
       }
       setError('Incorrect email or password. Please try again.');
+      return;
+    }
+
+    const playerInviteRedirect = await completePlayerInvite(supabase, signInData.user.id, inviteToken).catch(() => null);
+
+    if (playerInviteRedirect) {
+      setLoading(false);
+      router.push(playerInviteRedirect);
+      router.refresh();
       return;
     }
 
@@ -101,7 +112,7 @@ function LoginForm() {
 
         <p className="mt-6 text-center text-sm text-slate-300">
           New to Shift OS?{' '}
-          <Link href="/auth/signup" className="font-medium text-indigo-300 underline">
+          <Link href={`/auth/signup${inviteToken ? `?invite_token=${encodeURIComponent(inviteToken)}&role=parent` : ''}`} className="font-medium text-indigo-300 underline">
             Create account
           </Link>
         </p>
