@@ -11,6 +11,11 @@ export interface SettingsProfile {
   secondary_email: string | null;
   calendar_settings: Record<string, unknown>;
   notification_settings: Record<string, unknown>;
+  calendar_token: string | null;
+  calendar_sync_enabled: boolean;
+  calendar_include_pending: boolean;
+  calendar_include_training: boolean;
+  calendar_include_tournaments: boolean;
 }
 
 interface RawProfile {
@@ -23,6 +28,11 @@ interface RawProfile {
   secondary_email?: string | null;
   calendar_settings?: Record<string, unknown> | null;
   notification_settings?: Record<string, unknown> | null;
+  calendar_token?: string | null;
+  calendar_sync_enabled?: boolean | null;
+  calendar_include_pending?: boolean | null;
+  calendar_include_training?: boolean | null;
+  calendar_include_tournaments?: boolean | null;
 }
 
 export interface SettingsProfileData {
@@ -51,7 +61,12 @@ function normalizeProfile(profile: RawProfile | null, user: User): SettingsProfi
     phone: readString(profile?.phone),
     secondary_email: readString(profile?.secondary_email),
     calendar_settings: readObject(profile?.calendar_settings),
-    notification_settings: readObject(profile?.notification_settings)
+    notification_settings: readObject(profile?.notification_settings),
+    calendar_token: readString(profile?.calendar_token),
+    calendar_sync_enabled: profile?.calendar_sync_enabled ?? false,
+    calendar_include_pending: profile?.calendar_include_pending ?? false,
+    calendar_include_training: profile?.calendar_include_training ?? true,
+    calendar_include_tournaments: profile?.calendar_include_tournaments ?? true
   };
 }
 

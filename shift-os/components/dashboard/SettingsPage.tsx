@@ -27,6 +27,11 @@ interface SettingsProfile {
   secondary_email: string | null;
   calendar_settings?: Record<string, unknown>;
   notification_settings?: Record<string, unknown>;
+  calendar_token: string | null;
+  calendar_sync_enabled: boolean;
+  calendar_include_pending: boolean;
+  calendar_include_training: boolean;
+  calendar_include_tournaments: boolean;
 }
 
 interface LinkedPlayer {
@@ -140,6 +145,25 @@ function Toggle({ checked, onChange, label, helper }: { checked: boolean; onChan
   );
 }
 
+function CompactToggle({ checked, onChange, label, helper, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; label: string; helper?: string; disabled?: boolean }) {
+  return (
+    <button type="button" disabled={disabled} onClick={() => onChange(!checked)} className="flex w-full items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left disabled:cursor-not-allowed disabled:opacity-60">
+      <span>
+        <span className="block text-sm font-medium text-white">{label}</span>
+        {helper ? <span className="mt-1 block text-xs text-white/30">{helper}</span> : null}
+      </span>
+      <span className={`relative h-6 w-11 rounded-full transition-all duration-300 ease-out ${checked ? 'bg-emerald-500' : 'bg-white/[0.12]'}`}>
+        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all duration-300 ease-out ${checked ? 'left-6' : 'left-1'}`} />
+      </span>
+    </button>
+  );
+}
+
+function calendarHost(): string {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ?? 'https://shiftos.co.uk';
+  return siteUrl.replace(/^https?:\/\//, '');
+}
+
 export default function SettingsPage({ role, user, profile, primaryColour = '#00C851', linkedPlayers = [], extraContent }: SettingsPageProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('contact');
   const [secondaryEmail, setSecondaryEmail] = useState(profile.secondary_email ?? '');
@@ -150,6 +174,12 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
   const [country, setCountry] = useState(profile.country ?? 'England');
   const [timezone, setTimezone] = useState(profile.timezone ?? 'Europe/London');
   const [calendarSettings, setCalendarSettings] = useState<CalendarSettings>(() => readCalendarSettings(profile.calendar_settings));
+  const [calendarToken, setCalendarToken] = useState(profile.calendar_token);
+  const [calendarSyncEnabled, setCalendarSyncEnabled] = useState(profile.calendar_sync_enabled);
+  const [includePending, setIncludePending] = useState(profile.calendar_include_pending);
+  const [includeTraining, setIncludeTraining] = useState(profile.calendar_include_training);
+  const [includeTournaments, setIncludeTournaments] = useState(profile.calendar_include_tournaments);
+  const [calendarCopied, setCalendarCopied] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() => readNotificationSettings(profile.notification_settings));
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -159,6 +189,8 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
   const [error, setError] = useState('');
   const [children, setChildren] = useState(linkedPlayers);
   const textColour = contrastText(primaryColour);
+  const feedUrl = calendarToken ? `webcal://${calendarHost()}/api/calendar/${calendarToken}` : '';
+  const googleCalendarUrl = feedUrl ? `https://www.google.com/calendar/render?cid=${encodeURIComponent(feedUrl)}` : '#';
 
   const passwordMatches = newPassword.length > 0 && newPassword === confirmPassword;
   const canUpdatePassword = currentPassword.length > 0 && newPassword.length >= 8 && passwordMatches;
@@ -210,6 +242,36 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
       calendar_settings: calendarSettings,
       notification_settings: notificationSettings
     });
+  }
+
+  async function toggleCalendarSync(enabled: boolean) {
+    const nextToken = calendarToken ?? crypto.randomUUID();
+    setCalendarSyncEnabled(enabled);
+    setCalendarToken(nextToken);
+    await updateProfile({
+      calendar_sync_enabled: enabled,
+      calendar_token: nextToken
+    }, enabled ? 'Calendar sync enabled' : 'Calendar sync disabled');
+  }
+
+  async function updateCalendarOption(key: 'calendar_include_training' | 'calendar_include_tournaments' | 'calendar_include_pending', value: boolean) {
+    if (key === 'calendar_include_training') setIncludeTraining(value);
+    if (key === 'calendar_include_tournaments') setIncludeTournaments(value);
+    if (key === 'calendar_include_pending') setIncludePending(value);
+    await updateProfile({ [key]: value }, 'Calendar options saved');
+  }
+
+  async function copyCalendarFeed() {
+    if (!feedUrl) return;
+    await navigator.clipboard.writeText(feedUrl);
+    setCalendarCopied(true);
+    window.setTimeout(() => setCalendarCopied(false), 2000);
+  }
+
+  async function regenerateCalendarToken() {
+    const nextToken = crypto.randomUUID();
+    setCalendarToken(nextToken);
+    await updateProfile({ calendar_token: nextToken }, 'Calendar feed URL regenerated');
   }
 
   async function updatePassword() {
@@ -401,6 +463,57 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
 
           {activeTab === 'calendar' ? (
             <>
+              <section className={cardClass}>
+                <h2 className="text-xl font-bold">Calendar Sync</h2>
+                <div className="mt-5">
+                  <Toggle
+                    checked={calendarSyncEnabled}
+                    onChange={(checked) => void toggleCalendarSync(checked)}
+                    label="Sync to your calendar"
+                    helper="Fixtures appear automatically in Apple Calendar, Google Calendar or any calendar app"
+                  />
+                </div>
+
+                {calendarSyncEnabled && feedUrl ? (
+                  <div className="mt-5">
+                    <p className="mb-2 text-xs uppercase tracking-wider text-white/40">Your calendar feed</p>
+                    <div className="break-all rounded-xl bg-white/[0.06] px-4 py-3 font-mono text-xs text-white/60">{feedUrl}</div>
+                    <div className="mt-3 grid gap-2 md:grid-cols-3">
+                      <button type="button" onClick={copyCalendarFeed} className="rounded-xl border border-white/[0.08] bg-white/[0.06] px-4 py-3 text-sm font-medium text-white">
+                        {calendarCopied ? 'Copied' : 'Copy Link'}
+                      </button>
+                      <a href={feedUrl} target="_self" className="rounded-xl border border-white/[0.08] bg-white/[0.06] px-4 py-3 text-center text-sm font-medium text-white">
+                        Apple Calendar
+                      </a>
+                      <a href={googleCalendarUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-white/[0.08] bg-white/[0.06] px-4 py-3 text-center text-sm font-medium text-white">
+                        Google Calendar
+                      </a>
+                    </div>
+
+                    <p className="mb-2 mt-5 text-xs uppercase tracking-wider text-white/40">What gets synced</p>
+                    <div className="space-y-2">
+                      <CompactToggle checked onChange={() => undefined} disabled label="Confirmed matches" />
+                      <CompactToggle checked={includeTraining} onChange={(checked) => void updateCalendarOption('calendar_include_training', checked)} label="Training sessions" />
+                      <CompactToggle checked={includeTournaments} onChange={(checked) => void updateCalendarOption('calendar_include_tournaments', checked)} label="Tournaments" />
+                      <CompactToggle checked={includePending} onChange={(checked) => void updateCalendarOption('calendar_include_pending', checked)} label="Unconfirmed matches" helper="Add matches to calendar even before you confirm availability" />
+                    </div>
+
+                    <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                      <p className="text-xs text-white/30">Regenerate feed URL</p>
+                      <p className="mt-1 text-xs text-white/20">This will break any existing calendar subscriptions.</p>
+                      <button type="button" onClick={regenerateCalendarToken} className="mt-3 text-xs font-semibold text-white/45 transition hover:text-white">Regenerate</button>
+                    </div>
+
+                    {role === 'parent' ? (
+                      <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                        <h3 className="text-sm font-semibold text-white">Football Family Calendar Access</h3>
+                        <p className="mt-2 text-xs leading-relaxed text-white/40">Family members can subscribe to a read-only calendar feed showing confirmed fixtures and sessions from their own Football Family settings.</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+
               <section className={cardClass}>
                 <h2 className="text-xl font-bold">Calendar Preferences</h2>
                 <div className="mt-5 space-y-5">
