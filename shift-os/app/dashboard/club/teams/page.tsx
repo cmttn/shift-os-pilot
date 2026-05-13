@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import CoachInviteDrawer from '@/components/dashboard/CoachInviteDrawer';
 import CopyInviteButton from '@/components/dashboard/CopyInviteButton';
+import PendingCoachJoinRequests, { type PendingCoachJoinRequest } from '@/components/dashboard/PendingCoachJoinRequests';
 import { getClubData } from '@/lib/dashboard/getClubData';
+import { createClient } from '@/lib/supabase/server';
 
 function canManageTeams(role: string): boolean {
   return role === 'admin' || role === 'club_admin' || role === 'shift_admin' || role === 'coach';
@@ -19,6 +21,42 @@ export default async function ClubTeamsPage() {
   if (!canManageTeams(clubData.clubRole)) redirect('/dashboard/club');
 
   const primaryColour = clubData.club.primary_colour;
+  const supabase = await createClient();
+  const { data: requestRows } = await supabase
+    .from('club_join_requests')
+    .select('id,coach_user_id,team_id')
+    .eq('club_id', clubData.club.id)
+    .eq('status', 'pending');
+  const rawRequests = (requestRows ?? []) as Array<{
+    id: string;
+    coach_user_id: string;
+    team_id: string | null;
+  }>;
+  const requestCoachIds = Array.from(new Set(rawRequests.map((request) => request.coach_user_id)));
+  const requestTeamIds = rawRequests.map((request) => request.team_id).filter((teamId): teamId is string => Boolean(teamId));
+  const [{ data: requestProfiles }, { data: requestTeams }, { data: requestPlayers }] = await Promise.all([
+    requestCoachIds.length > 0
+      ? supabase.from('users_profile').select('id,full_name,email').in('id', requestCoachIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; full_name: string | null; email: string | null }> }),
+    requestTeamIds.length > 0
+      ? supabase.from('teams').select('id,name,age_group').in('id', requestTeamIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string | null; age_group: string | null }> }),
+    requestTeamIds.length > 0
+      ? supabase.from('players').select('team_id').in('team_id', requestTeamIds).eq('is_active', true)
+      : Promise.resolve({ data: [] as Array<{ team_id: string | null }> })
+  ]);
+  const pendingRequests: PendingCoachJoinRequest[] = rawRequests.map((request) => {
+    const profile = (requestProfiles ?? []).find((item) => item.id === request.coach_user_id);
+    const team = (requestTeams ?? []).find((item) => item.id === request.team_id);
+    return {
+      id: request.id,
+      coachName: profile?.full_name?.trim() || 'Coach',
+      coachEmail: profile?.email ?? '',
+      teamName: team?.name ?? null,
+      ageGroup: team?.age_group ?? null,
+      playerCount: (requestPlayers ?? []).filter((player) => player.team_id === request.team_id).length
+    };
+  });
 
   return (
     <div className="-mx-4 -my-4 min-h-screen px-4 py-10 md:-mx-8 md:-my-8 md:px-8" style={{ backgroundColor: '#080a0f' }}>
@@ -43,6 +81,8 @@ export default async function ClubTeamsPage() {
           </Link>
         </div>
       </div>
+
+      <PendingCoachJoinRequests requests={pendingRequests} primaryColour={primaryColour} />
 
       {clubData.teams.length === 0 ? (
         <section className="mt-10 rounded-2xl border p-10 text-center" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>

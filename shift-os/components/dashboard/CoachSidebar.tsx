@@ -38,6 +38,7 @@ export default function CoachSidebar({ data }: CoachSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [unviewedTicketCount, setUnviewedTicketCount] = useState(0);
+  const [teamMenuOpen, setTeamMenuOpen] = useState(false);
   const team = data.teams[0] ?? null;
   const primaryColour = team?.club_primary_colour ?? '#00C851';
   async function handleSignOut() {
@@ -65,6 +66,26 @@ export default function CoachSidebar({ data }: CoachSidebarProps) {
         <h2 className="mt-3 text-lg font-semibold tracking-tight text-white">{team?.name ?? 'Coach'}</h2>
         <p className="mt-1 text-xs uppercase tracking-widest text-white/25">{team?.age_group ?? 'No team selected'}</p>
         {team?.is_club_managed ? <p className="mt-3 text-xs text-white/35">{team.club_name}</p> : null}
+        {data.teams.length > 1 ? (
+          <div className="relative mt-4">
+            <button type="button" onClick={() => setTeamMenuOpen((open) => !open)} className="w-full rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-left text-xs font-semibold text-white/65">
+              Switch team ↓
+            </button>
+            {teamMenuOpen ? (
+              <div className="absolute left-0 right-0 top-11 z-50 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d1117] shadow-2xl">
+                {data.teams.map((item) => (
+                  <Link key={item.id} href={`/dashboard/coach?team=${item.id}`} onClick={() => setTeamMenuOpen(false)} className="flex items-center justify-between gap-2 px-4 py-3 text-sm text-white/65 transition hover:bg-white/[0.04] hover:text-white">
+                    <span>
+                      <span className="block font-semibold">{item.name}</span>
+                      <span className="text-xs text-white/30">{item.age_group ?? 'Team'}</span>
+                    </span>
+                    {item.id === team?.id ? <span style={{ color: primaryColour }}>✓</span> : null}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <nav className="flex-1 px-3">
         {navItems.map(([label, href]) => {

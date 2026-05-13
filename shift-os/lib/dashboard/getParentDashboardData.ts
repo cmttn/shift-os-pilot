@@ -182,7 +182,7 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
   const userId = session.user.id;
   const [profileRes, playersRes] = await Promise.all([
     supabase.from('users_profile').select('full_name').eq('id', userId).single(),
-    supabase.from('players').select('id,team_id,first_name,last_name,dob,is_active,invite_token,fa_fan_number,fa_fan_verified').eq('parent_user_id', session.user.id).eq('is_active', true).order('first_name', { ascending: true })
+    supabase.from('players').select('id,team_id,first_name,last_name,dob,is_active,invite_token,fa_fan_number,fa_fan_verified').or(`parent_user_id.eq.${session.user.id},co_parent_user_id.eq.${session.user.id}`).eq('is_active', true).order('first_name', { ascending: true })
   ]);
 
   const playerRows = (playersRes.data ?? []) as RawPlayer[];

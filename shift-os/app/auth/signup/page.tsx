@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { completeFamilyInvite } from '@/lib/auth/completeFamilyInvite';
 import { completePendingInvite } from '@/lib/auth/completeInvite';
 import { completePlayerInvite } from '@/lib/auth/completePlayerInvite';
 import { createClient } from '@/lib/supabase/client';
@@ -12,6 +13,7 @@ function SignupForm() {
   const searchParams = useSearchParams();
   const intendedRole = searchParams.get('role');
   const inviteToken = searchParams.get('invite_token') ?? searchParams.get('invite');
+  const familyToken = searchParams.get('family_token');
   const clubId = searchParams.get('club');
   const teamId = searchParams.get('team');
   const playerId = searchParams.get('player');
@@ -47,9 +49,10 @@ function SignupForm() {
     setLoading(true);
     const supabase = createClient();
     const normalizedEmail = email.trim().toLowerCase();
-    const nextPath = inviteToken ? '/dashboard' : intendedRole === 'club_admin' || !intendedRole ? '/onboarding' : '/dashboard';
+    const nextPath = inviteToken || familyToken ? '/dashboard' : intendedRole === 'club_admin' || !intendedRole ? '/onboarding' : '/dashboard';
     const callbackParams = new URLSearchParams({ next: nextPath });
     if (inviteToken) callbackParams.set('invite_token', inviteToken);
+    if (familyToken) callbackParams.set('family_token', familyToken);
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
@@ -59,6 +62,7 @@ function SignupForm() {
           full_name: fullName.trim(),
           intended_role: intendedRole,
           invite_token: inviteToken,
+          family_token: familyToken,
           club_id: clubId,
           team_id: teamId,
           player_id: playerId
@@ -94,6 +98,12 @@ function SignupForm() {
         router.refresh();
         return;
       }
+      const familyInviteRedirect = await completeFamilyInvite(supabase, data.user.id, familyToken);
+      if (familyInviteRedirect) {
+        router.push(familyInviteRedirect);
+        router.refresh();
+        return;
+      }
       const inviteRedirect = await completePendingInvite(supabase, data.user.id, data.user.user_metadata);
       router.push(inviteRedirect ?? nextPath);
       router.refresh();
@@ -115,7 +125,7 @@ function SignupForm() {
           <p className="text-sm text-rose-400">
             {error}{' '}
             {error === 'An account with this email already exists.' && (
-              <Link href={`/auth/login${inviteToken ? `?invite_token=${encodeURIComponent(inviteToken)}` : ''}`} className="font-medium text-indigo-300 underline">Go to login</Link>
+              <Link href={`/auth/login${inviteToken ? `?invite_token=${encodeURIComponent(inviteToken)}` : familyToken ? `?family_token=${encodeURIComponent(familyToken)}` : ''}`} className="font-medium text-indigo-300 underline">Go to login</Link>
             )}
           </p>
         )}

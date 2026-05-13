@@ -82,7 +82,7 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
 
   const { data: membership } = await supabase
     .from('club_members')
-    .select('club_id, club_role, clubs(id,name,ethos,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges,plan_tier)')
+    .select('club_id, club_role, clubs(id,name,ethos,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges,coach_join_code,plan_tier)')
     .eq('user_id', session.user.id)
     .eq('is_active', true)
     .maybeSingle();
@@ -144,7 +144,7 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
   const firstClubId = rawTeams.find((team) => team.club_id)?.club_id ?? null;
   const { data: teamClubData } =
     !memberClub && firstClubId
-      ? await supabase.from('clubs').select('id,name,ethos,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges,plan_tier').eq('id', firstClubId).maybeSingle()
+      ? await supabase.from('clubs').select('id,name,ethos,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges,coach_join_code,plan_tier').eq('id', firstClubId).maybeSingle()
       : { data: null };
   const club =
     memberClub ??
@@ -157,6 +157,7 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
       secondary_colour: '#080a0f',
       allow_team_colours: true,
       allow_team_badges: true,
+      coach_join_code: null,
       plan_tier: 'free'
     });
   const teams = rawTeams.map((team) => {

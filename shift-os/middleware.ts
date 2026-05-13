@@ -6,6 +6,10 @@ type ClubMembership = {
   club_id: string | null;
 };
 
+type FamilyConnection = {
+  id: string;
+};
+
 const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup', '/auth/callback'];
 
 function isPublicRoute(pathname: string): boolean {
@@ -96,6 +100,18 @@ export async function middleware(request: NextRequest) {
   }
 
   if (clubRole === null) {
+    const { data: familyConnection } = await supabase
+      .from('football_family')
+      .select('id')
+      .eq('family_user_id', session.user.id)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle<FamilyConnection>();
+
+    if (familyConnection) {
+      return isOnRoute(pathname, '/dashboard/family') ? response : redirectTo(request, '/dashboard/family');
+    }
+
     const intendedRole = typeof session.user.user_metadata?.intended_role === 'string' ? session.user.user_metadata.intended_role : null;
 
     if (intendedRole === 'coach') {
@@ -108,6 +124,10 @@ export async function middleware(request: NextRequest) {
 
     if (intendedRole === 'player') {
       return isOnRoute(pathname, '/dashboard/player/welcome') ? response : redirectTo(request, '/dashboard/player/welcome');
+    }
+
+    if (intendedRole === 'family') {
+      return isOnRoute(pathname, '/dashboard/family') ? response : redirectTo(request, '/dashboard/family');
     }
 
     return pathname === '/onboarding' ? response : redirectTo(request, '/onboarding');

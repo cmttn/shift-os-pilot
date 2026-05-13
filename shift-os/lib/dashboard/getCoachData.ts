@@ -21,6 +21,7 @@ export interface CoachDashboardData {
     team_badge_url: string | null;
     allow_team_colours: boolean;
     allow_team_badges: boolean;
+    is_lead: boolean;
     plan_tier: string;
     is_club_managed: boolean;
   }>;
@@ -66,6 +67,7 @@ export interface CoachDashboardData {
 
 interface TeamCoachRow {
   team_id: string;
+  is_lead: boolean | null;
 }
 
 interface RawCoachTeam {
@@ -166,7 +168,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
 
   const [profileRes, assignmentsRes] = await Promise.all([
     supabase.from('users_profile').select('full_name').eq('id', session.user.id).maybeSingle<{ full_name: string | null }>(),
-    supabase.from('team_coaches').select('team_id').eq('user_id', session.user.id)
+    supabase.from('team_coaches').select('team_id,is_lead').eq('user_id', session.user.id)
   ]);
 
   const assignments = (assignmentsRes.data ?? []) as TeamCoachRow[];
@@ -210,6 +212,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
   const teams = rawTeams.map((team) => {
     const club = getFirstRelation(team.clubs);
     const branding = resolveTeamBranding({ team, club });
+    const assignment = assignments.find((item) => item.team_id === team.id);
     return {
       id: team.id,
       name: team.name,
@@ -229,8 +232,12 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       allow_team_colours: club?.allow_team_colours ?? false,
       allow_team_badges: club?.allow_team_badges ?? false,
       plan_tier: club?.plan_tier ?? 'free',
-      is_club_managed: Boolean(team.club_id)
+      is_club_managed: Boolean(team.club_id),
+      is_lead: assignment?.is_lead ?? false
     };
+  }).sort((first, second) => {
+    if (first.is_lead !== second.is_lead) return first.is_lead ? -1 : 1;
+    return first.name.localeCompare(second.name);
   });
 
   const players = ((playersRes.data ?? []) as RawPlayer[]).map((player) => {

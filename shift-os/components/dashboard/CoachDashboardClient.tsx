@@ -19,6 +19,7 @@ const tools = [
 
 interface CoachDashboardClientProps {
   data: CoachDashboardData;
+  initialActiveTeamId?: string | null;
 }
 
 interface RecentPotm {
@@ -105,9 +106,11 @@ function getFanBadge(player: CoachDashboardData['players'][number]): { label: st
   };
 }
 
-export default function CoachDashboardClient({ data }: CoachDashboardClientProps) {
+export default function CoachDashboardClient({ data, initialActiveTeamId }: CoachDashboardClientProps) {
   const router = useRouter();
-  const [activeTeamId, setActiveTeamId] = useState(data.activeTeamId);
+  const validInitialTeamId = initialActiveTeamId && data.teams.some((team) => team.id === initialActiveTeamId) ? initialActiveTeamId : data.activeTeamId;
+  const [activeTeamId, setActiveTeamId] = useState(validInitialTeamId);
+  const [teamMenuOpen, setTeamMenuOpen] = useState(false);
   const [recentPotm, setRecentPotm] = useState<RecentPotm | null>(null);
   const [quickInviteName, setQuickInviteName] = useState('');
   const [quickInviteResult, setQuickInviteResult] = useState<QuickInviteResult | null>(null);
@@ -127,6 +130,12 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
     training: teamSessions.filter((session) => session.type === 'training'),
     tournament: teamSessions.filter((session) => session.type === 'tournament')
   }), [teamSessions]);
+
+  const switchTeam = (teamId: string) => {
+    setActiveTeamId(teamId);
+    setTeamMenuOpen(false);
+    router.push(`/dashboard/coach?team=${teamId}`);
+  };
 
   useEffect(() => {
     async function loadRecentPotm() {
@@ -284,10 +293,29 @@ export default function CoachDashboardClient({ data }: CoachDashboardClientProps
       <div className="mx-auto min-h-screen max-w-[480px] pb-[84px] md:ml-[260px] md:max-w-[900px] md:px-8 md:pb-12">
         <header className="mx-5 mt-5 rounded-2xl border p-3 backdrop-blur-xl md:mx-0 md:mt-0 md:border-b-0 md:bg-transparent md:p-0 md:pt-8" style={{ backgroundColor: 'rgba(255,255,255,0.035)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="mx-auto flex h-full max-w-[480px] items-center justify-between gap-3 md:max-w-[900px] md:px-0">
-            <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
-              {data.teams.length === 0 ? <span className="rounded-full bg-white/[0.08] px-4 py-2 text-sm text-white/45">No team</span> : data.teams.map((team) => (
-                <button key={team.id} type="button" onClick={() => setActiveTeamId(team.id)} className="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out" style={team.id === activeTeam?.id ? { backgroundColor: primaryColour, color: contrastText } : { backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}>{team.name}</button>
-              ))}
+            <div className="relative flex min-w-0 flex-1">
+              {data.teams.length <= 1 ? (
+                <span className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: contrastText }}>{activeTeam?.name ?? 'No team'}</span>
+              ) : (
+                <>
+                  <button type="button" onClick={() => setTeamMenuOpen((open) => !open)} className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: contrastText }}>
+                    {activeTeam?.name ?? 'Switch team'} <span className="ml-1">↓</span>
+                  </button>
+                  {teamMenuOpen ? (
+                    <div className="absolute left-0 top-12 z-30 w-72 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d1117] shadow-2xl">
+                      {data.teams.map((team) => (
+                        <button key={team.id} type="button" onClick={() => switchTeam(team.id)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/[0.04]">
+                          <span>
+                            <span className="block font-semibold text-white">{team.name}</span>
+                            <span className="mt-0.5 block text-xs text-white/35">{[team.age_group, team.club_name].filter(Boolean).join(' / ') || 'Independent team'}</span>
+                          </span>
+                          {team.id === activeTeam?.id ? <span style={{ color: primaryColour }}>✓</span> : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
             <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-black" style={{ backgroundColor: primaryColour, color: contrastText }}>{initials(data.coach.full_name)}</span>
           </div>
