@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import ClubBrandingSettings from '@/components/dashboard/ClubBrandingSettings';
 import SettingsPage from '@/components/dashboard/SettingsPage';
 import { getClubData } from '@/lib/dashboard/getClubData';
 import { getSettingsProfile } from '@/lib/dashboard/getSettingsProfile';
@@ -26,6 +27,12 @@ export default async function ClubSettingsPage() {
         <p className="mt-2 text-sm text-white/40">Set club-wide POTM message rules, coach voting and player voting age.</p>
         <Link href="/dashboard/club/settings/potm" className="mt-5 inline-flex rounded-full px-5 py-3 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: primaryText }}>Manage POTM Settings</Link>
       </section>
+      <ClubBrandingSettings
+        clubId={clubData.club.id}
+        allowTeamColours={clubData.club.allow_team_colours}
+        allowTeamBadges={clubData.club.allow_team_badges}
+        primaryColour={primaryColour}
+      />
       <section className="rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
         <h2 className="text-xl font-bold">Coach Recognition</h2>
         <p className="mt-2 text-sm text-white/40">Set positive ticket thresholds and rewards for coach recognition.</p>

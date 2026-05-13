@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { resolveTeamBranding } from '@/lib/utils/teamBranding';
 
 export type ParentAvailabilityStatus = 'available' | 'unavailable' | 'week_off' | 'pending';
 
@@ -83,6 +84,9 @@ interface RawTeam {
   age_group: string | null;
   gender: string | null;
   club_id: string | null;
+  primary_colour: string | null;
+  secondary_colour: string | null;
+  badge_url: string | null;
 }
 
 interface RawClub {
@@ -91,6 +95,8 @@ interface RawClub {
   badge_url: string | null;
   primary_colour: string | null;
   secondary_colour: string | null;
+  allow_team_colours: boolean | null;
+  allow_team_badges: boolean | null;
 }
 
 interface RawSession {
@@ -186,7 +192,7 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
 
   const teamIds = Array.from(new Set(playerRows.map((player) => player.team_id).filter((teamId): teamId is string => Boolean(teamId))));
   const { data: teamRowsData } = teamIds.length > 0
-    ? await supabase.from('teams').select('id,name,age_group,gender,club_id').in('id', teamIds)
+    ? await supabase.from('teams').select('id,name,age_group,gender,club_id,primary_colour,secondary_colour,badge_url').in('id', teamIds)
     : { data: [] as RawTeam[] };
 
   const teamRows = (teamRowsData ?? []) as RawTeam[];
@@ -224,7 +230,7 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
   );
 
   const { data: clubRowsData } = clubIds.length > 0
-    ? await supabase.from('clubs').select('id,name,badge_url,primary_colour,secondary_colour').in('id', clubIds)
+    ? await supabase.from('clubs').select('id,name,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges').in('id', clubIds)
     : { data: [] as RawClub[] };
 
   const clubRows = (clubRowsData ?? []) as RawClub[];
@@ -244,6 +250,7 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
       fa_fan_verified: player.fa_fan_verified ?? false,
       teams: playerTeamRows.map((team) => {
         const club = clubRows.find((item) => item.id === team.club_id) ?? null;
+        const branding = resolveTeamBranding({ team, club });
         return {
           team_id: team.id,
           team_name: team.name,
@@ -251,9 +258,9 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
           gender: team.gender,
           club_id: team.club_id,
           club_name: club?.name ?? null,
-          club_badge_url: club?.badge_url ?? null,
-          club_primary_colour: club?.primary_colour ?? '#00C851',
-          club_secondary_colour: club?.secondary_colour ?? '#080a0f',
+          club_badge_url: branding.badge_url,
+          club_primary_colour: branding.primary_colour,
+          club_secondary_colour: branding.secondary_colour,
           upcoming_sessions: sessionRows
             .filter((item) => item.team_id === team.id)
             .map((item) => buildSession(item, responseRows, player.id))

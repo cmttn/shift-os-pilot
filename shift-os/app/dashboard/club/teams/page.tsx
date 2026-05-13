@@ -27,13 +27,21 @@ export default async function ClubTeamsPage() {
           <h1 className="text-4xl font-black tracking-tight text-white md:text-5xl">Teams</h1>
           <p className="mt-3 text-lg text-white/40">Manage your teams for {clubData.club.name}.</p>
         </div>
-        <Link
-          href="/dashboard/club/teams/new"
-          className="w-fit rounded-full px-6 py-3 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]"
-          style={{ backgroundColor: primaryColour, color: '#ffffff', boxShadow: `0 4px 20px ${primaryColour}59` }}
-        >
-          Add Team +
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/dashboard/club/teams/import"
+            className="w-fit rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white/60 transition-all duration-300 ease-out hover:bg-white/[0.05] hover:text-white"
+          >
+            Import Existing Team
+          </Link>
+          <Link
+            href="/dashboard/club/teams/new"
+            className="w-fit rounded-full px-6 py-3 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]"
+            style={{ backgroundColor: primaryColour, color: '#ffffff', boxShadow: `0 4px 20px ${primaryColour}59` }}
+          >
+            Add Team +
+          </Link>
+        </div>
       </div>
 
       {clubData.teams.length === 0 ? (
@@ -47,6 +55,12 @@ export default async function ClubTeamsPage() {
           >
             Add Team +
           </Link>
+          <Link
+            href="/dashboard/club/teams/import"
+            className="mt-3 inline-block rounded-full border border-white/10 px-8 py-4 font-semibold text-white/55 transition-all duration-300 ease-out hover:bg-white/[0.05] hover:text-white"
+          >
+            Import Existing Team
+          </Link>
         </section>
       ) : (
         <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -56,7 +70,7 @@ export default async function ClubTeamsPage() {
               className="overflow-hidden rounded-2xl border transition-all duration-300 ease-out hover:-translate-y-[3px]"
               style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}
             >
-              <div className="h-px w-full opacity-50" style={{ backgroundColor: primaryColour }} />
+              <div className="h-px w-full opacity-50" style={{ backgroundColor: team.primary_colour }} />
               <div className="p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -65,15 +79,15 @@ export default async function ClubTeamsPage() {
                       <p className="mt-1 text-sm text-white/30">{team.age_group ?? 'Age group not set'}</p>
                     </Link>
                   </div>
-                  <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${primaryColour}1f`, borderColor: `${primaryColour}40`, color: primaryColour }}>
+                  <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ backgroundColor: `${team.primary_colour}1f`, borderColor: `${team.primary_colour}40`, color: team.primary_colour }}>
                     {titleCase(team.gender)}
                   </span>
                 </div>
                 <div className="my-4 h-px w-full bg-white/[0.06]" />
                 <p className="text-sm text-white/35">Coach: {team.coach_name ?? 'Unassigned'}</p>
-                {team.pending_invite ? <CoachInviteDrawer clubId={clubData.club.id} teamId={team.id} primaryColour={primaryColour} initialInvite={team.pending_invite} /> : null}
-                {team.coach_user_id ? <Link href={`/dashboard/club/teams/${team.id}/coach-view`} className="mt-3 block text-sm font-semibold transition-all duration-300 ease-out hover:text-white" style={{ color: primaryColour }}>View as Coach →</Link> : null}
-                <p className="mt-3 font-mono text-lg font-black tracking-[0.28em]" style={{ color: primaryColour }}>{team.join_code ?? '------'}</p>
+                {team.pending_invite ? <CoachInviteDrawer clubId={clubData.club.id} teamId={team.id} primaryColour={team.primary_colour} initialInvite={team.pending_invite} /> : null}
+                {team.coach_user_id ? <Link href={`/dashboard/club/teams/${team.id}/coach-view`} className="mt-3 block text-sm font-semibold transition-all duration-300 ease-out hover:text-white" style={{ color: team.primary_colour }}>View as Coach →</Link> : null}
+                <p className="mt-3 font-mono text-lg font-black tracking-[0.28em]" style={{ color: team.primary_colour }}>{team.join_code ?? '------'}</p>
                 {team.join_code ? <CopyInviteButton inviteUrl={team.join_code} label="Copy Code" /> : null}
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-sm text-white/35">Players: {team.player_count}</p>

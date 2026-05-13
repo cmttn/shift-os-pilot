@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { resolveTeamBranding } from '@/lib/utils/teamBranding';
 
 export interface ClubRecord {
   id: string;
@@ -7,6 +8,8 @@ export interface ClubRecord {
   badge_url: string | null;
   primary_colour: string;
   secondary_colour: string;
+  allow_team_colours: boolean;
+  allow_team_badges: boolean;
   plan_tier: 'free' | 'pro' | string;
 }
 
@@ -18,6 +21,14 @@ export interface TeamRecord {
   league: string | null;
   season: string | null;
   join_code: string | null;
+  primary_colour: string;
+  secondary_colour: string;
+  badge_url: string | null;
+  team_primary_colour: string | null;
+  team_secondary_colour: string | null;
+  team_badge_url: string | null;
+  club_import_token: string | null;
+  club_import_status: string | null;
   coach_name: string | null;
   coach_user_id: string | null;
   pending_invite: PendingCoachInvite | null;
@@ -61,6 +72,11 @@ interface RawTeamRecord {
   league: string | null;
   season: string | null;
   join_code: string | null;
+  primary_colour: string | null;
+  secondary_colour: string | null;
+  badge_url: string | null;
+  club_import_token: string | null;
+  club_import_status: string | null;
 }
 
 interface LeadCoachRecord {
@@ -131,7 +147,7 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
 
   const { data: membership } = await supabase
     .from('club_members')
-    .select('club_id, club_role, clubs(id,name,ethos,badge_url,primary_colour,secondary_colour,plan_tier)')
+    .select('club_id, club_role, clubs(id,name,ethos,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges,plan_tier)')
     .eq('user_id', session.user.id)
     .eq('is_active', true)
     .maybeSingle();
@@ -146,7 +162,7 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
   const [teamsRes, profileRes, statTeamsRes] = await Promise.all([
     supabase
       .from('teams')
-      .select('id,name,age_group,gender,league,season,join_code')
+      .select('id,name,age_group,gender,league,season,join_code,primary_colour,secondary_colour,badge_url,club_import_token,club_import_status')
       .eq('club_id', clubId)
       .eq('is_active', true)
       .order('name', { ascending: true }),
@@ -276,18 +292,29 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
     firstName: fullName.length > 0 ? fullName.split(' ')[0] : 'there',
     clubRole: typeof membership?.club_role === 'string' ? membership.club_role : '',
     club,
-    teams: rawTeams.map((team) => ({
-      ...team,
-      coach_name: getCoachName(team.id),
-      coach_user_id: getLeadCoach(team.id)?.user_id ?? null,
-      pending_invite: getPendingInvite(team.id),
-      coach_email: getCoachEmail(team.id),
-      coach_status: getCoachStatus(team.id),
-      player_count: players.filter((player) => player.team_id === team.id).length,
-      players: players
-        .filter((player) => player.team_id === team.id)
-        .map((player) => ({ first_name: player.first_name ?? '', last_name: player.last_name ?? '' }))
-    })),
+    teams: rawTeams.map((team) => {
+      const branding = resolveTeamBranding({ team, club });
+      return {
+        ...team,
+        primary_colour: branding.primary_colour,
+        secondary_colour: branding.secondary_colour,
+        badge_url: branding.badge_url,
+        team_primary_colour: team.primary_colour,
+        team_secondary_colour: team.secondary_colour,
+        team_badge_url: team.badge_url,
+        club_import_token: team.club_import_token,
+        club_import_status: team.club_import_status,
+        coach_name: getCoachName(team.id),
+        coach_user_id: getLeadCoach(team.id)?.user_id ?? null,
+        pending_invite: getPendingInvite(team.id),
+        coach_email: getCoachEmail(team.id),
+        coach_status: getCoachStatus(team.id),
+        player_count: players.filter((player) => player.team_id === team.id).length,
+        players: players
+          .filter((player) => player.team_id === team.id)
+          .map((player) => ({ first_name: player.first_name ?? '', last_name: player.last_name ?? '' }))
+      };
+    }),
     fixtures: sessions.map((item) => ({
       id: item.id,
       fixture_date: item.session_date,

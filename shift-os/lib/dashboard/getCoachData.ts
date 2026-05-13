@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { resolveTeamBranding } from '@/lib/utils/teamBranding';
 
 export interface CoachDashboardData {
   coach: { id: string; full_name: string; email: string };
@@ -11,7 +12,15 @@ export interface CoachDashboardData {
     club_id: string | null;
     club_name: string | null;
     club_primary_colour: string | null;
+    club_secondary_colour: string | null;
     club_badge_url: string | null;
+    club_import_token: string | null;
+    club_import_status: string | null;
+    team_primary_colour: string | null;
+    team_secondary_colour: string | null;
+    team_badge_url: string | null;
+    allow_team_colours: boolean;
+    allow_team_badges: boolean;
     plan_tier: string;
     is_club_managed: boolean;
   }>;
@@ -66,15 +75,26 @@ interface RawCoachTeam {
   gender: string | null;
   join_code: string | null;
   club_id: string | null;
+  primary_colour: string | null;
+  secondary_colour: string | null;
+  badge_url: string | null;
+  club_import_token: string | null;
+  club_import_status: string | null;
   clubs?: {
     name: string | null;
     primary_colour: string | null;
+    secondary_colour: string | null;
     badge_url: string | null;
+    allow_team_colours: boolean | null;
+    allow_team_badges: boolean | null;
     plan_tier: string | null;
   } | Array<{
     name: string | null;
     primary_colour: string | null;
+    secondary_colour: string | null;
     badge_url: string | null;
+    allow_team_colours: boolean | null;
+    allow_team_badges: boolean | null;
     plan_tier: string | null;
   }> | null;
 }
@@ -168,7 +188,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
   const [teamsRes, playersRes, sessionsRes] = await Promise.all([
     supabase
       .from('teams')
-      .select('id,name,age_group,gender,join_code,club_id,clubs(name,primary_colour,badge_url,plan_tier)')
+      .select('id,name,age_group,gender,join_code,club_id,primary_colour,secondary_colour,badge_url,club_import_token,club_import_status,clubs(name,primary_colour,secondary_colour,badge_url,allow_team_colours,allow_team_badges,plan_tier)')
       .in('id', teamIds)
       .eq('is_active', true)
       .order('name', { ascending: true }),
@@ -189,6 +209,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
   const rawTeams = (teamsRes.data ?? []) as RawCoachTeam[];
   const teams = rawTeams.map((team) => {
     const club = getFirstRelation(team.clubs);
+    const branding = resolveTeamBranding({ team, club });
     return {
       id: team.id,
       name: team.name,
@@ -197,8 +218,16 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       join_code: team.join_code,
       club_id: team.club_id,
       club_name: club?.name ?? null,
-      club_primary_colour: club?.primary_colour ?? null,
-      club_badge_url: club?.badge_url ?? null,
+      club_primary_colour: branding.primary_colour,
+      club_secondary_colour: branding.secondary_colour,
+      club_badge_url: branding.badge_url,
+      club_import_token: team.club_import_token ?? null,
+      club_import_status: team.club_import_status ?? null,
+      team_primary_colour: team.primary_colour ?? null,
+      team_secondary_colour: team.secondary_colour ?? null,
+      team_badge_url: team.badge_url ?? null,
+      allow_team_colours: club?.allow_team_colours ?? false,
+      allow_team_badges: club?.allow_team_badges ?? false,
       plan_tier: club?.plan_tier ?? 'free',
       is_club_managed: Boolean(team.club_id)
     };
