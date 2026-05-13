@@ -1,18 +1,26 @@
 import { redirect } from 'next/navigation';
-import SettingsShell from '@/components/dashboard/SettingsShell';
+import SettingsPage from '@/components/dashboard/SettingsPage';
 import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
+import { getSettingsProfile } from '@/lib/dashboard/getSettingsProfile';
 
 export default async function ParentSettingsPage() {
-  const parentData = await getParentDashboardData();
+  const [parentData, settingsData] = await Promise.all([getParentDashboardData(), getSettingsProfile()]);
   if (!parentData) redirect('/dashboard/parent');
+  if (!settingsData) redirect('/auth/login');
+
+  const linkedPlayers = parentData.players.map((player) => ({
+    id: player.id,
+    name: player.full_name,
+    teamName: player.teams[0]?.team_name ?? 'Team'
+  }));
+
   return (
-    <SettingsShell
-      title="Parent Settings"
-      name={parentData.firstName}
-      email={parentData.email}
-      contextRows={[
-        { label: 'Linked players', value: parentData.players.map((player) => player.full_name).join(', ') || 'No linked players' }
-      ]}
+    <SettingsPage
+      role="parent"
+      user={settingsData.user}
+      profile={settingsData.profile}
+      primaryColour={parentData.allSameClub ? parentData.globalPrimaryColour : '#00C851'}
+      linkedPlayers={linkedPlayers}
     />
   );
 }
