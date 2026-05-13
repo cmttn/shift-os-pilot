@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import PlayerAccessTree from '@/components/dashboard/PlayerAccessTree';
 import { getParentDashboardData, type ParentPlayer, type ParentPlayerTeam } from '@/lib/dashboard/getParentDashboardData';
 
 function getContrastText(hexColour: string): string {
@@ -151,6 +152,15 @@ export default async function ParentDashboardPage({ searchParams }: ParentDashbo
               {data.players.map((player) => (
                 <div key={player.id}>
                   <PlayerCard player={player} allSameClub={data.allSameClub} globalPrimaryColour={data.globalPrimaryColour} compact />
+                  <div className="mb-4">
+                    <PlayerAccessTree
+                      playerName={player.first_name || player.full_name}
+                      primaryParents={player.access.parents}
+                      familyMembers={player.access.familyMembers}
+                      pendingFamilyInvites={player.access.pendingFamilyInvites}
+                      compact
+                    />
+                  </div>
                   <FanPrompt player={player} />
                 </div>
               ))}
@@ -200,6 +210,14 @@ export default async function ParentDashboardPage({ searchParams }: ParentDashbo
             data.players.map((player) => (
               <div key={player.id}>
                 <PlayerCard player={player} allSameClub={data.allSameClub} globalPrimaryColour={data.globalPrimaryColour} compact={false} />
+                <div className="mb-5">
+                  <PlayerAccessTree
+                    playerName={player.first_name || player.full_name}
+                    primaryParents={player.access.parents}
+                    familyMembers={player.access.familyMembers}
+                    pendingFamilyInvites={player.access.pendingFamilyInvites}
+                  />
+                </div>
                 <FanPrompt player={player} />
               </div>
             ))

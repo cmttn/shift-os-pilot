@@ -38,6 +38,7 @@ interface PlayerRow {
   first_name: string | null;
   last_name: string | null;
   parent_user_id: string | null;
+  co_parent_user_id: string | null;
 }
 
 interface VoteRow {
@@ -107,7 +108,7 @@ export default function ParentPotmVotePage() {
       ]);
       const availablePlayerIds = (responsesData ?? []).map((response) => response.player_id as string);
       const { data: playerData } = availablePlayerIds.length > 0
-        ? await supabase.from('players').select('id,first_name,last_name,parent_user_id').in('id', availablePlayerIds).order('first_name', { ascending: true })
+        ? await supabase.from('players').select('id,first_name,last_name,parent_user_id,co_parent_user_id').in('id', availablePlayerIds).order('first_name', { ascending: true })
         : { data: [] as PlayerRow[] };
       const { data: clubData } = teamData?.club_id
         ? await supabase.from('clubs').select('id,name,badge_url,primary_colour').eq('id', teamData.club_id).maybeSingle<ClubRow>()
@@ -123,7 +124,10 @@ export default function ParentPotmVotePage() {
     void load();
   }, [pollId, router]);
 
-  const ownPlayerIds = useMemo(() => new Set(players.filter((player) => player.parent_user_id === userId).map((player) => player.id)), [players, userId]);
+  const ownPlayerIds = useMemo(
+    () => new Set(players.filter((player) => player.parent_user_id === userId || player.co_parent_user_id === userId).map((player) => player.id)),
+    [players, userId]
+  );
 
   async function confirmVote() {
     if (!poll || !selectedPlayer) return;

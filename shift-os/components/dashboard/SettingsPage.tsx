@@ -40,6 +40,11 @@ interface LinkedPlayer {
   teamName: string;
 }
 
+interface PlayerOwnershipRow {
+  parent_user_id: string | null;
+  co_parent_user_id: string | null;
+}
+
 interface SettingsPageProps {
   role: Role;
   user: SettingsUser;
@@ -311,11 +316,34 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
 
   async function removeChild(playerId: string, name: string) {
     if (!window.confirm(`Remove ${name} from your account? This won't delete their profile from the team.`)) return;
-    const { error: removeError } = await createClient()
+    const supabase = createClient();
+    const { data: player, error: playerError } = await supabase
       .from('players')
-      .update({ parent_user_id: null })
+      .select('parent_user_id,co_parent_user_id')
       .eq('id', playerId)
-      .eq('parent_user_id', user.id);
+      .maybeSingle<PlayerOwnershipRow>();
+
+    if (playerError) {
+      setError(playerError.message);
+      return;
+    }
+
+    const removal =
+      player?.parent_user_id === user.id
+        ? { parent_user_id: null }
+        : player?.co_parent_user_id === user.id
+          ? { co_parent_user_id: null }
+          : null;
+
+    if (!removal) {
+      setError('This child is not linked to your account.');
+      return;
+    }
+
+    const { error: removeError } = await supabase
+      .from('players')
+      .update(removal)
+      .eq('id', playerId);
     if (removeError) {
       setError(removeError.message);
       return;

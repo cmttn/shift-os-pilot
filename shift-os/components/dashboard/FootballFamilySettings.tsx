@@ -7,6 +7,11 @@ import { contrastText } from '@/lib/utils/contrastText';
 export interface FamilySettingsPlayer {
   id: string;
   name: string;
+  parents: Array<{
+    id: string;
+    name: string;
+    detail: string;
+  }>;
   members: Array<{
     id: string;
     name: string;
@@ -17,6 +22,12 @@ export interface FamilySettingsPlayer {
     id: string;
     inviteeName: string | null;
     relationship: string | null;
+    status: string;
+    inviteToken: string;
+  }>;
+  coParentInvites: Array<{
+    id: string;
+    inviteeName: string | null;
     status: string;
     inviteToken: string;
   }>;
@@ -33,7 +44,10 @@ export default function FootballFamilySettings({ userId, players, primaryColour 
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
   const [email, setEmail] = useState('');
+  const [coParentName, setCoParentName] = useState('');
+  const [coParentEmail, setCoParentEmail] = useState('');
   const [inviteUrl, setInviteUrl] = useState('');
+  const [coParentInviteUrl, setCoParentInviteUrl] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const textColour = contrastText(primaryColour);
@@ -61,6 +75,28 @@ export default function FootballFamilySettings({ userId, players, primaryColour 
     setMessage('Invite created. Copy it or share it below.');
   }
 
+  async function sendCoParentInvite() {
+    if (!activePlayer) return;
+    setError('');
+    setMessage('');
+    const token = crypto.randomUUID();
+    const { error: insertError } = await createClient().from('football_family_invites').insert({
+      player_id: activePlayer.id,
+      invited_by: userId,
+      invite_token: token,
+      invitee_name: coParentName.trim() || null,
+      invitee_email: coParentEmail.trim() || null,
+      relationship: 'Co-parent'
+    });
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+    const url = `${window.location.origin}/invite/coparent/${token}`;
+    setCoParentInviteUrl(url);
+    setMessage('Co-parent invite created. Copy it or share it below.');
+  }
+
   async function removeMember(memberId: string) {
     const { error: updateError } = await createClient()
       .from('football_family')
@@ -79,9 +115,16 @@ export default function FootballFamilySettings({ userId, players, primaryColour 
     setMessage('Invite copied.');
   }
 
+  async function copyCoParentInvite() {
+    if (!coParentInviteUrl) return;
+    await navigator.clipboard.writeText(coParentInviteUrl);
+    setMessage('Co-parent invite copied.');
+  }
+
   if (players.length === 0) return null;
 
   const shareText = activePlayer && inviteUrl ? `Join ${activePlayer.name}'s Football Family on SHIFT OS!\n${inviteUrl}` : '';
+  const coParentShareText = activePlayer && coParentInviteUrl ? `You have been invited as a parent for ${activePlayer.name} on SHIFT OS.\n${coParentInviteUrl}` : '';
 
   return (
     <section className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
@@ -98,6 +141,43 @@ export default function FootballFamilySettings({ userId, players, primaryColour 
 
       {activePlayer ? (
         <div className="mt-5 space-y-4">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-white/30">Connected parents</p>
+            <div className="mt-3 space-y-2">
+              {activePlayer.parents.map((parent) => (
+                <div key={parent.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                  <p className="text-sm font-semibold text-white">{parent.name}</p>
+                  <p className="mt-1 text-xs text-white/35">{parent.detail} / Full access</p>
+                </div>
+              ))}
+              {activePlayer.coParentInvites.map((invite) => (
+                <div key={invite.id} className="rounded-xl border border-amber-400/10 bg-amber-400/[0.04] p-3">
+                  <p className="text-sm font-semibold text-white">{invite.inviteeName ?? 'Pending co-parent'}</p>
+                  <p className="mt-1 text-xs text-amber-200/60">Co-parent / {invite.status}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+            <p className="text-sm font-semibold text-white">Invite Co-Parent</p>
+            <p className="mt-1 text-xs text-white/35">Co-parents get full access for this player.</p>
+            <div className="mt-3 space-y-3">
+              <input value={coParentName} onChange={(event) => setCoParentName(event.target.value)} placeholder="Their name" className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25" />
+              <input value={coParentEmail} onChange={(event) => setCoParentEmail(event.target.value)} placeholder="Email optional" className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25" />
+              <button type="button" onClick={sendCoParentInvite} className="w-full rounded-full px-5 py-3 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: textColour }}>Create Co-Parent Invite</button>
+            </div>
+            {coParentInviteUrl ? (
+              <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
+                <code className="block truncate text-xs text-white/65">{coParentInviteUrl}</code>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <button type="button" onClick={copyCoParentInvite} className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black">Copy Link</button>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(coParentShareText)}`} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-4 py-2 text-center text-sm font-semibold text-white/55">Share WhatsApp</a>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           <div>
             <p className="text-xs uppercase tracking-wider text-white/30">{activePlayer.name}&apos;s Football Family</p>
             <div className="mt-3 space-y-2">

@@ -80,7 +80,7 @@ export default function SetGoalPage() {
 
       const [{ data: sessionData }, { data: playerData }, { data: goalData }] = await Promise.all([
         supabase.from('sessions').select('id,team_id,type,opponent,title,session_date').eq('id', params.sessionId).maybeSingle<SessionRow>(),
-        supabase.from('players').select('id,team_id,first_name,last_name').eq('id', params.playerId).eq('parent_user_id', user.id).maybeSingle<PlayerRow>(),
+        supabase.from('players').select('id,team_id,first_name,last_name').eq('id', params.playerId).or(`parent_user_id.eq.${user.id},co_parent_user_id.eq.${user.id}`).maybeSingle<PlayerRow>(),
         supabase.from('player_star_goals').select('category').eq('session_id', params.sessionId).eq('player_id', params.playerId).maybeSingle<GoalRow>()
       ]);
 

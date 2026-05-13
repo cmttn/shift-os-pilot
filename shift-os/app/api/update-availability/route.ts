@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       .from('players')
       .select('id,team_id')
       .eq('id', payload.playerId)
-      .eq('parent_user_id', session.user.id)
+      .or(`parent_user_id.eq.${session.user.id},co_parent_user_id.eq.${session.user.id}`)
       .maybeSingle<PlayerRow>(),
     supabase
       .from('sessions')

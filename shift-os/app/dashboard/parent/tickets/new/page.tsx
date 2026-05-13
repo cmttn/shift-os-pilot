@@ -118,7 +118,7 @@ export default function NewParentTicketPage() {
         router.push('/auth/login');
         return;
       }
-      const { data: playersData } = await supabase.from('players').select('id,team_id,first_name,last_name').eq('parent_user_id', user.id).eq('is_active', true);
+      const { data: playersData } = await supabase.from('players').select('id,team_id,first_name,last_name').or(`parent_user_id.eq.${user.id},co_parent_user_id.eq.${user.id}`).eq('is_active', true);
       const players = (playersData ?? []) as PlayerRow[];
       const teamIds = Array.from(new Set(players.map((player) => player.team_id).filter((id): id is string => Boolean(id))));
       const [{ data: teamsData }, { data: coachData }] = await Promise.all([

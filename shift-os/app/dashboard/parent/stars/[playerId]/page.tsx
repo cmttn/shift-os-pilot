@@ -69,7 +69,7 @@ export default async function ChildGoalsPage({ params }: GoalsPageProps) {
     .from('players')
     .select('id,first_name,last_name')
     .eq('id', params.playerId)
-    .eq('parent_user_id', user.id)
+    .or(`parent_user_id.eq.${user.id},co_parent_user_id.eq.${user.id}`)
     .maybeSingle<PlayerRow>();
   if (!player) redirect('/dashboard/parent');
 

@@ -3,17 +3,29 @@
 import Link from 'next/link';
 import { FormEvent, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { completeFamilyInvite } from '@/lib/auth/completeFamilyInvite';
 import { completePlayerInvite } from '@/lib/auth/completePlayerInvite';
 import { createClient } from '@/lib/supabase/client';
 
 type ClubMemberLookup = { id: string };
+type InviteMode = 'family' | 'coparent';
+
+async function acceptInvite(token: string, mode: InviteMode): Promise<string | null> {
+  const response = await fetch('/api/invites/family/accept', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, mode })
+  });
+  if (!response.ok) return null;
+  const payload = (await response.json()) as { redirectTo?: string | null };
+  return payload.redirectTo ?? null;
+}
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get('invite_token');
   const familyToken = searchParams.get('family_token');
+  const coParentToken = searchParams.get('coparent_token');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -52,7 +64,8 @@ function LoginForm() {
     }
 
     const playerInviteRedirect = await completePlayerInvite(supabase, signInData.user.id, inviteToken).catch(() => null);
-    const familyInviteRedirect = await completeFamilyInvite(supabase, signInData.user.id, familyToken).catch(() => null);
+    const familyInviteRedirect = familyToken ? await acceptInvite(familyToken, 'family').catch(() => null) : null;
+    const coParentInviteRedirect = coParentToken ? await acceptInvite(coParentToken, 'coparent').catch(() => null) : null;
 
     if (playerInviteRedirect) {
       setLoading(false);
@@ -63,6 +76,12 @@ function LoginForm() {
     if (familyInviteRedirect) {
       setLoading(false);
       router.push(familyInviteRedirect);
+      router.refresh();
+      return;
+    }
+    if (coParentInviteRedirect) {
+      setLoading(false);
+      router.push(coParentInviteRedirect);
       router.refresh();
       return;
     }
@@ -121,7 +140,7 @@ function LoginForm() {
 
         <p className="mt-6 text-center text-sm text-slate-300">
           New to Shift OS?{' '}
-          <Link href={`/auth/signup${inviteToken ? `?invite_token=${encodeURIComponent(inviteToken)}&role=parent` : familyToken ? `?family_token=${encodeURIComponent(familyToken)}&role=family` : ''}`} className="font-medium text-indigo-300 underline">
+          <Link href={`/auth/signup${inviteToken ? `?invite_token=${encodeURIComponent(inviteToken)}&role=parent` : familyToken ? `?family_token=${encodeURIComponent(familyToken)}&role=family` : coParentToken ? `?coparent_token=${encodeURIComponent(coParentToken)}&role=parent` : ''}`} className="font-medium text-indigo-300 underline">
             Create account
           </Link>
         </p>

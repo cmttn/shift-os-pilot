@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import PlayerAccessTree from '@/components/dashboard/PlayerAccessTree';
 import { getFamilyDashboardData } from '@/lib/dashboard/getFamilyDashboardData';
 import { MILESTONES } from '@/lib/tools/starCategories';
 
@@ -73,6 +74,15 @@ export default async function FamilyPlayerPage({ params }: FamilyPlayerPageProps
             <p className="mt-2 text-sm text-white/40">The coach has not posted the next session yet.</p>
           </section>
         )}
+
+        <div className="mt-8">
+          <PlayerAccessTree
+            playerName={player.first_name || player.full_name}
+            primaryParents={player.access.parents}
+            familyMembers={player.access.familyMembers}
+            pendingFamilyInvites={player.access.pendingFamilyInvites}
+          />
+        </div>
 
         <section className="mt-8">
           <h2 className="text-xl font-bold">Upcoming fixtures and sessions</h2>

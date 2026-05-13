@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import ParentFixturesClient from '@/components/dashboard/ParentFixturesClient';
 import { GoalAwardTrigger, type GoalAwardSession } from '@/components/dashboard/GoalAwardSheet';
 import ParentQuickSwitcher, { type ParentQuickSwitchOption } from '@/components/dashboard/ParentQuickSwitcher';
+import PlayerAccessTree from '@/components/dashboard/PlayerAccessTree';
 import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
 import { createClient } from '@/lib/supabase/server';
 import { getCategoryMeta, getCurrentSeason, MILESTONES, type MilestoneId, type ParentStarCategory } from '@/lib/tools/starCategories';
@@ -313,6 +314,15 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             </section>
           ) : null}
 
+          <div className="mt-5">
+            <PlayerAccessTree
+              playerName={player.first_name || player.full_name}
+              primaryParents={player.access.parents}
+              familyMembers={player.access.familyMembers}
+              pendingFamilyInvites={player.access.pendingFamilyInvites}
+            />
+          </div>
+
           <ParentFixturesClient playerId={player.id} playerName={player.full_name} team={team} heroSessionId={heroSession?.id ?? null} beforeHero={beforeHero} afterSchedule={milestoneStrip} />
         </div>
       </section>
@@ -338,6 +348,14 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             {cardPoll?.social_card_url ? <img src={cardPoll.social_card_url} alt="" className="mt-4 max-w-md rounded-xl border border-white/10" /> : null}
           </section>
         ) : null}
+        <div className="mx-auto mt-6 max-w-[900px]">
+          <PlayerAccessTree
+            playerName={player.first_name || player.full_name}
+            primaryParents={player.access.parents}
+            familyMembers={player.access.familyMembers}
+            pendingFamilyInvites={player.access.pendingFamilyInvites}
+          />
+        </div>
         <ParentFixturesClient playerId={player.id} playerName={player.full_name} team={team} heroSessionId={heroSession?.id ?? null} beforeHero={beforeHero} afterSchedule={milestoneStrip} />
       </section>
     </main>

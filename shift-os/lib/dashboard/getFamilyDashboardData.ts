@@ -33,6 +33,11 @@ export interface FamilyPlayer {
   primary_colour: string;
   secondary_colour: string;
   goals_total: number;
+  access: {
+    parents: Array<{ id: string; name: string; detail: string }>;
+    familyMembers: Array<{ id: string; name: string; detail: string; status: string }>;
+    pendingFamilyInvites: Array<{ id: string; name: string; detail: string; status: string }>;
+  };
   sessions: FamilySession[];
   milestones: FamilyMilestone[];
 }
@@ -49,9 +54,33 @@ interface FamilyRow {
 
 interface PlayerRow {
   id: string;
+  parent_user_id: string | null;
+  co_parent_user_id: string | null;
   first_name: string | null;
   last_name: string | null;
   team_id: string | null;
+}
+
+interface AccessProfile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
+interface FamilyAccessRow {
+  id: string;
+  player_id: string;
+  family_user_id: string;
+  relationship: string | null;
+  status: string | null;
+}
+
+interface FamilyInviteRow {
+  id: string;
+  player_id: string;
+  invitee_name: string | null;
+  relationship: string | null;
+  status: string | null;
 }
 
 interface TeamRow {
@@ -119,7 +148,7 @@ export async function getFamilyDashboardData(): Promise<FamilyDashboardData | nu
 
   const { data: playerRowsData } = await supabase
     .from('players')
-    .select('id,first_name,last_name,team_id')
+    .select('id,parent_user_id,co_parent_user_id,first_name,last_name,team_id')
     .in('id', playerIds)
     .eq('is_active', true);
   const playerRows = (playerRowsData ?? []) as PlayerRow[];
@@ -147,6 +176,20 @@ export async function getFamilyDashboardData(): Promise<FamilyDashboardData | nu
   const clubRows = (clubRowsData ?? []) as ClubRow[];
   const goalRows = (goalRowsData ?? []) as GoalTotalRow[];
   const milestoneRows = (milestoneRowsData ?? []) as Array<FamilyMilestone & { player_id: string }>;
+  const parentUserIds = Array.from(new Set(playerRows.flatMap((player) => [player.parent_user_id, player.co_parent_user_id]).filter((id): id is string => Boolean(id))));
+  const [{ data: parentProfilesData }, { data: familyAccessData }, { data: inviteRowsData }] = await Promise.all([
+    parentUserIds.length > 0 ? supabase.from('users_profile').select('id,full_name,email').in('id', parentUserIds) : Promise.resolve({ data: [] as AccessProfile[] }),
+    supabase.from('football_family').select('id,player_id,family_user_id,relationship,status').in('player_id', playerIds).eq('status', 'active'),
+    supabase.from('football_family_invites').select('id,player_id,invitee_name,relationship,status').in('player_id', playerIds).eq('status', 'pending')
+  ]);
+  const familyAccessRows = (familyAccessData ?? []) as FamilyAccessRow[];
+  const familyUserIds = Array.from(new Set(familyAccessRows.map((row) => row.family_user_id)));
+  const { data: familyProfilesData } = familyUserIds.length > 0
+    ? await supabase.from('users_profile').select('id,full_name,email').in('id', familyUserIds)
+    : { data: [] as AccessProfile[] };
+  const parentProfiles = (parentProfilesData ?? []) as AccessProfile[];
+  const familyProfiles = (familyProfilesData ?? []) as AccessProfile[];
+  const inviteRows = (inviteRowsData ?? []) as FamilyInviteRow[];
 
   return {
     userId: session.user.id,
@@ -155,6 +198,24 @@ export async function getFamilyDashboardData(): Promise<FamilyDashboardData | nu
       if (!team) return [];
       const club = clubRows.find((item) => item.id === team.club_id) ?? null;
       const branding = resolveTeamBranding({ team, club });
+      const parentIds = [player.parent_user_id, player.co_parent_user_id].filter((id): id is string => Boolean(id));
+      const parents = parentIds.map((parentId, index) => {
+        const profile = parentProfiles.find((item) => item.id === parentId);
+        return {
+          id: parentId,
+          name: profile?.full_name?.trim() || profile?.email || (index === 0 ? 'Primary parent' : 'Connected parent'),
+          detail: index === 0 ? 'Primary parent' : 'Co-parent'
+        };
+      });
+      const familyMembers = familyAccessRows.filter((row) => row.player_id === player.id).map((row) => {
+        const profile = familyProfiles.find((item) => item.id === row.family_user_id);
+        return {
+          id: row.id,
+          name: profile?.full_name?.trim() || profile?.email || 'Family member',
+          detail: row.relationship ?? 'Football Family',
+          status: 'View only'
+        };
+      });
       return [{
         id: player.id,
         first_name: player.first_name ?? 'Player',
@@ -167,6 +228,16 @@ export async function getFamilyDashboardData(): Promise<FamilyDashboardData | nu
         primary_colour: branding.primary_colour,
         secondary_colour: branding.secondary_colour,
         goals_total: goalRows.find((row) => row.player_id === player.id)?.total_stars ?? 0,
+        access: {
+          parents,
+          familyMembers,
+          pendingFamilyInvites: inviteRows.filter((row) => row.player_id === player.id && row.relationship !== 'Co-parent').map((row) => ({
+            id: row.id,
+            name: row.invitee_name?.trim() || 'Pending invite',
+            detail: row.relationship ?? 'Football Family',
+            status: 'Pending'
+          }))
+        },
         sessions: sessionRows
           .filter((item) => item.team_id === team.id)
           .map((item) => ({

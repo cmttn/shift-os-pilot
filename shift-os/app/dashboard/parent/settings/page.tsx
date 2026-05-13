@@ -32,6 +32,7 @@ export default async function ParentSettingsPage() {
   const familyPlayers: FamilySettingsPlayer[] = parentData.players.map((player) => ({
     id: player.id,
     name: player.full_name,
+    parents: player.access.parents,
     members: (familyRows ?? []).filter((row) => row.player_id === player.id).map((row) => {
       const profile = (familyProfiles ?? []).find((item) => item.id === row.family_user_id);
       return {
@@ -41,10 +42,16 @@ export default async function ParentSettingsPage() {
         status: row.status ?? 'active'
       };
     }),
-    invites: (inviteRows ?? []).filter((row) => row.player_id === player.id).map((row) => ({
+    invites: (inviteRows ?? []).filter((row) => row.player_id === player.id && row.relationship !== 'Co-parent').map((row) => ({
       id: row.id,
       inviteeName: row.invitee_name,
       relationship: row.relationship,
+      status: row.status ?? 'pending',
+      inviteToken: row.invite_token
+    })),
+    coParentInvites: (inviteRows ?? []).filter((row) => row.player_id === player.id && row.relationship === 'Co-parent').map((row) => ({
+      id: row.id,
+      inviteeName: row.invitee_name,
       status: row.status ?? 'pending',
       inviteToken: row.invite_token
     }))
