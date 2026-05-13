@@ -60,8 +60,8 @@ export default function ClubFixturesPanel({ fixtures, primaryColour, darkerPrima
           <button type="button" onClick={() => setShowImport((current) => !current)} className="rounded-full border px-4 py-2 text-sm text-white transition-all duration-300 ease-out hover:bg-white/[0.08]" style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)' }}>
             ↑ Import Fixtures
           </button>
-          <Link href="/dashboard/club/fixtures/new" className="rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${primaryColour}, ${darkerPrimary})`, color: contrastText }}>
-            Add Fixture +
+          <Link href="/dashboard/club/fixtures/import" className="rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${primaryColour}, ${darkerPrimary})`, color: contrastText }}>
+            Import Fixtures
           </Link>
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function ClubFixturesPanel({ fixtures, primaryColour, darkerPrima
             <p className="mt-2 text-sm text-white/35">Import from your league system or add manually.</p>
             <div className="mt-5 flex justify-center gap-2">
               <button type="button" onClick={() => setShowImport(true)} className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: contrastText }}>Import Fixtures</button>
-              <Link href="/dashboard/club/fixtures/new" className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">Add Fixture +</Link>
+              <Link href="/dashboard/club/fixtures/import" className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">Open Import</Link>
             </div>
           </div>
         ) : (

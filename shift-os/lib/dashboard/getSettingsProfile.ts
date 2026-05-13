@@ -19,6 +19,8 @@ export interface SettingsProfile {
 }
 
 interface RawProfile {
+  id?: string | null;
+  user_id?: string | null;
   full_name?: string | null;
   dob?: string | null;
   gender?: string | null;
@@ -81,7 +83,7 @@ export async function getSettingsProfile(): Promise<SettingsProfileData | null> 
   const { data } = await supabase
     .from('users_profile')
     .select('*')
-    .eq('id', user.id)
+    .or(`id.eq.${user.id},user_id.eq.${user.id}`)
     .maybeSingle<RawProfile>();
 
   return {

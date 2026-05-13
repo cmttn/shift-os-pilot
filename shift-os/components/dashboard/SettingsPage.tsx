@@ -207,14 +207,22 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
   }
 
   async function updateProfile(values: Record<string, unknown>, successMessage?: string) {
-    const { error: updateError } = await createClient()
+    const { data, error: updateError } = await createClient()
       .from('users_profile')
       .update(values)
-      .eq('id', user.id);
+      .or(`id.eq.${user.id},user_id.eq.${user.id}`)
+      .select('id')
+      .maybeSingle<{ id: string }>();
 
     if (updateError) {
       setMessage('');
       setError(updateError.message);
+      return;
+    }
+
+    if (!data) {
+      setMessage('');
+      setError('Your profile record could not be found. Please sign out and back in, then try again.');
       return;
     }
 
