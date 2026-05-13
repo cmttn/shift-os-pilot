@@ -7,7 +7,7 @@ import SignOutButton from '@/components/auth/SignOutButton';
 import { createClient } from '@/lib/supabase/client';
 import { contrastText } from '@/lib/utils/contrastText';
 
-type Role = 'coach' | 'parent' | 'club' | 'player';
+type Role = 'coach' | 'parent' | 'club' | 'player' | 'family';
 type SettingsTab = 'contact' | 'profile' | 'security' | 'calendar';
 type CalendarView = 'week' | 'month';
 type WeekStart = 'monday' | 'sunday';
@@ -194,6 +194,7 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
 
   const passwordMatches = newPassword.length > 0 && newPassword === confirmPassword;
   const canUpdatePassword = currentPassword.length > 0 && newPassword.length >= 8 && passwordMatches;
+  const visibleTabs = useMemo(() => tabs.filter((tab) => role !== 'club' || tab.id !== 'calendar'), [role]);
 
   const inputClass = 'w-full rounded-xl border border-white/[0.08] bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition-all duration-300 ease-out placeholder:text-white/20 focus:border-white/20';
   const readOnlyClass = 'w-full cursor-not-allowed rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white opacity-50 outline-none';
@@ -328,7 +329,7 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
 
         <div className="mt-6 overflow-x-auto border-b border-white/[0.06]">
           <nav className="flex min-w-max gap-6">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -461,7 +462,7 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
             </>
           ) : null}
 
-          {activeTab === 'calendar' ? (
+          {activeTab === 'calendar' && role !== 'club' ? (
             <>
               <section className={cardClass}>
                 <h2 className="text-xl font-bold">Calendar Sync</h2>
