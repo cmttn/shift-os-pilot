@@ -91,7 +91,7 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
     ? '-mx-5 flex gap-3 overflow-x-auto px-5 pb-2'
     : 'grid grid-cols-2 gap-3';
   const cardClass = variant === 'mobile'
-    ? 'flex w-[calc((100vw-64px)/3)] max-w-[138px] shrink-0 flex-col rounded-2xl border p-3'
+    ? 'relative flex h-[220px] w-[calc((100vw-64px)/3)] max-w-[138px] shrink-0 flex-col overflow-hidden rounded-2xl border p-3'
     : 'flex min-h-[180px] flex-col rounded-2xl border p-4';
 
   return (
@@ -112,13 +112,13 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
               className={cardClass}
               style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: isNewlyAvailable ? `${primaryColour}66` : 'rgba(255,255,255,0.06)' }}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
+              <div className={variant === 'mobile' ? 'pr-16' : 'flex items-start justify-between gap-3'}>
+                <div className="min-w-0">
                   <p className={variant === 'mobile' ? 'text-xs font-bold leading-tight text-white' : 'text-sm font-bold text-white'}>{tool.shortName ?? tool.name}</p>
                   {tool.shortName ? <p className="mt-0.5 text-[10px] leading-tight text-white/30">{tool.name}</p> : null}
                 </div>
                 <span
-                  className={variant === 'mobile' ? 'rounded-full px-1.5 py-0.5 text-[9px] font-semibold' : 'rounded-full px-2 py-1 text-[10px] font-semibold'}
+                  className={variant === 'mobile' ? 'absolute right-3 top-3 rounded-full px-1.5 py-0.5 text-[9px] font-semibold' : 'rounded-full px-2 py-1 text-[10px] font-semibold'}
                   style={
                     isAvailable
                       ? { backgroundColor: `${primaryColour}24`, color: primaryColour }
@@ -130,9 +130,9 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
                   {isAvailable ? 'Available' : state === 'requested' ? 'Requested' : 'Locked'}
                 </span>
               </div>
-              <p className={variant === 'mobile' ? 'mt-2 line-clamp-3 flex-1 text-[10px] leading-snug text-white/40' : 'mt-3 flex-1 text-xs leading-relaxed text-white/40'}>{tool.description}</p>
-              {isNewlyAvailable ? <p className={variant === 'mobile' ? 'mt-2 rounded-lg bg-white/[0.04] px-2 py-1.5 text-[10px] leading-snug text-white' : 'mt-3 rounded-xl bg-white/[0.04] px-3 py-2 text-xs text-white'}>New tool available: {tool.name} - Try now.</p> : null}
-              <div className={variant === 'mobile' ? 'mt-3' : 'mt-4'}>
+              <p className={variant === 'mobile' ? 'mt-2 line-clamp-2 text-[10px] leading-snug text-white/40' : 'mt-3 flex-1 text-xs leading-relaxed text-white/40'}>{tool.description}</p>
+              {isNewlyAvailable ? <p className={variant === 'mobile' ? 'mt-2 inline-flex w-fit rounded-full bg-white/[0.04] px-2 py-1 text-[10px] font-semibold leading-none text-white' : 'mt-3 rounded-xl bg-white/[0.04] px-3 py-2 text-xs text-white'}>{variant === 'mobile' ? 'New - try now' : `New tool available: ${tool.name} - Try now.`}</p> : null}
+              <div className={variant === 'mobile' ? 'mt-auto pt-2' : 'mt-4'}>
                 {isAvailable && tool.coachPath ? (
                   <Link href={tool.coachPath} className={variant === 'mobile' ? 'inline-flex w-full justify-center rounded-full px-3 py-1.5 text-xs font-semibold' : 'inline-flex w-full justify-center rounded-full px-4 py-2 text-sm font-semibold'} style={{ backgroundColor: primaryColour, color: buttonTextColour }}>
                     Open
