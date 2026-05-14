@@ -49,8 +49,9 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   },
   {
     key: 'recognition',
-    name: 'Stars / Recognition',
+    name: 'Goals / Recognition',
     description: 'Encourage effort, enjoyment and positive player development.',
+    coachPath: '/dashboard/coach/profile',
     clubPath: '/dashboard/club/settings/recognition',
     defaultEnabled: true
   },

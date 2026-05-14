@@ -91,7 +91,7 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
     ? '-mx-5 flex gap-3 overflow-x-auto px-5 pb-2'
     : 'grid grid-cols-2 gap-3';
   const cardClass = variant === 'mobile'
-    ? 'flex w-[210px] shrink-0 flex-col rounded-2xl border p-4'
+    ? 'flex w-[calc((100vw-64px)/3)] max-w-[138px] shrink-0 flex-col rounded-2xl border p-3'
     : 'flex min-h-[180px] flex-col rounded-2xl border p-4';
 
   return (
@@ -114,11 +114,11 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-bold text-white">{tool.shortName ?? tool.name}</p>
-                  {tool.shortName ? <p className="mt-0.5 text-[11px] text-white/30">{tool.name}</p> : null}
+                  <p className={variant === 'mobile' ? 'text-xs font-bold leading-tight text-white' : 'text-sm font-bold text-white'}>{tool.shortName ?? tool.name}</p>
+                  {tool.shortName ? <p className="mt-0.5 text-[10px] leading-tight text-white/30">{tool.name}</p> : null}
                 </div>
                 <span
-                  className="rounded-full px-2 py-1 text-[10px] font-semibold"
+                  className={variant === 'mobile' ? 'rounded-full px-1.5 py-0.5 text-[9px] font-semibold' : 'rounded-full px-2 py-1 text-[10px] font-semibold'}
                   style={
                     isAvailable
                       ? { backgroundColor: `${primaryColour}24`, color: primaryColour }
@@ -130,15 +130,15 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
                   {isAvailable ? 'Available' : state === 'requested' ? 'Requested' : 'Locked'}
                 </span>
               </div>
-              <p className="mt-3 flex-1 text-xs leading-relaxed text-white/40">{tool.description}</p>
-              {isNewlyAvailable ? <p className="mt-3 rounded-xl bg-white/[0.04] px-3 py-2 text-xs text-white">New tool available: {tool.name} - Try now.</p> : null}
-              <div className="mt-4">
+              <p className={variant === 'mobile' ? 'mt-2 line-clamp-3 flex-1 text-[10px] leading-snug text-white/40' : 'mt-3 flex-1 text-xs leading-relaxed text-white/40'}>{tool.description}</p>
+              {isNewlyAvailable ? <p className={variant === 'mobile' ? 'mt-2 rounded-lg bg-white/[0.04] px-2 py-1.5 text-[10px] leading-snug text-white' : 'mt-3 rounded-xl bg-white/[0.04] px-3 py-2 text-xs text-white'}>New tool available: {tool.name} - Try now.</p> : null}
+              <div className={variant === 'mobile' ? 'mt-3' : 'mt-4'}>
                 {isAvailable && tool.coachPath ? (
-                  <Link href={tool.coachPath} className="inline-flex w-full justify-center rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: buttonTextColour }}>
+                  <Link href={tool.coachPath} className={variant === 'mobile' ? 'inline-flex w-full justify-center rounded-full px-3 py-1.5 text-xs font-semibold' : 'inline-flex w-full justify-center rounded-full px-4 py-2 text-sm font-semibold'} style={{ backgroundColor: primaryColour, color: buttonTextColour }}>
                     Open
                   </Link>
                 ) : state === 'requested' ? (
-                  <button type="button" disabled className="w-full rounded-full border border-white/[0.08] px-4 py-2 text-sm font-semibold text-white/35">
+                  <button type="button" disabled className={variant === 'mobile' ? 'w-full rounded-full border border-white/[0.08] px-3 py-1.5 text-xs font-semibold text-white/35' : 'w-full rounded-full border border-white/[0.08] px-4 py-2 text-sm font-semibold text-white/35'}>
                     Requested
                   </button>
                 ) : (
@@ -146,7 +146,7 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
                     type="button"
                     onClick={() => requestUnlock(tool)}
                     disabled={loadingKey === tool.key}
-                    className="w-full rounded-full border border-white/[0.1] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-55"
+                    className={variant === 'mobile' ? 'w-full rounded-full border border-white/[0.1] px-2 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-55' : 'w-full rounded-full border border-white/[0.1] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-55'}
                   >
                     {loadingKey === tool.key ? 'Requesting...' : 'Request unlock'}
                   </button>
