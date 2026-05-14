@@ -145,7 +145,8 @@ const COACH_FEATURE_KEYS = [
   'announcement_builder',
   'fair_play_reports',
   'structured_conversations',
-  'parent_engagement'
+  'parent_engagement',
+  'squad_rotation_planner'
 ] as const;
 
 function getFirstRelation<T>(value: T | T[] | null | undefined): T | null {

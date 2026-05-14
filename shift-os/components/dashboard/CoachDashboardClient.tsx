@@ -14,6 +14,7 @@ const tools = [
   ['fair_play_reports', 'Fair Play Reports', 'Pro', 'Full game time reports', '/dashboard/coach/stats'],
   ['structured_conversations', 'Structured Conversations', 'Pro', 'Structured ticket workflows', '/dashboard/coach/tickets'],
   ['parent_engagement', 'Parent Engagement', 'Pro', 'Track parent response rates', '/dashboard/coach/stats'],
+  ['squad_rotation_planner', 'Squad Rotation Planner', 'Pro', 'More minutes. Less subs. Less pressure. More smiles.', '/dashboard/coach/tools/srp'],
   ['potm', 'Player of the Match', 'Pro (unlocked for testing)', 'Run automated POTM polls and generate social cards', '/dashboard/coach/tools/potm']
 ] as const;
 

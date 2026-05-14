@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import CoachPotmSettingsForm from '@/components/dashboard/CoachPotmSettingsForm';
+import CoachSrpSettingsForm from '@/components/dashboard/CoachSrpSettingsForm';
 import CoachTeamBrandingSettings from '@/components/dashboard/CoachTeamBrandingSettings';
 import SettingsPage from '@/components/dashboard/SettingsPage';
 import { getCoachData } from '@/lib/dashboard/getCoachData';
@@ -31,6 +32,12 @@ export default async function CoachSettingsPage() {
         primaryColour={primaryColour}
       />
       <CoachPotmSettingsForm userId={coachData.coach.id} clubId={activeTeam.club_id} primaryColour={primaryColour} />
+      <CoachSrpSettingsForm
+        userId={coachData.coach.id}
+        teamId={activeTeam.id}
+        clubEnabled={!activeTeam.is_club_managed || coachData.enabledFeatures.includes('squad_rotation_planner')}
+        primaryColour={primaryColour}
+      />
     </div>
   ) : (
     <CoachPotmSettingsForm userId={coachData.coach.id} clubId={null} primaryColour={primaryColour} />

@@ -13,7 +13,7 @@ type FamilyConnection = {
 const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup', '/auth/callback'];
 
 function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/poll/') || pathname.startsWith('/invite/') || pathname.startsWith('/api/');
+  return PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/poll/') || pathname.startsWith('/invite/') || pathname.startsWith('/srp/') || pathname.startsWith('/api/');
 }
 
 function redirectTo(request: NextRequest, pathname: string): NextResponse {
