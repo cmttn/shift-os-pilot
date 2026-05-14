@@ -2,11 +2,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import ClubBrandingSettings from '@/components/dashboard/ClubBrandingSettings';
 import ClubJoinCodeSettings from '@/components/dashboard/ClubJoinCodeSettings';
-import ClubSrpSettings from '@/components/dashboard/ClubSrpSettings';
 import SettingsPage from '@/components/dashboard/SettingsPage';
 import { getClubData } from '@/lib/dashboard/getClubData';
 import { getSettingsProfile } from '@/lib/dashboard/getSettingsProfile';
-import { createClient } from '@/lib/supabase/server';
 import { contrastText } from '@/lib/utils/contrastText';
 
 export default async function ClubSettingsPage() {
@@ -16,13 +14,6 @@ export default async function ClubSettingsPage() {
 
   const primaryColour = clubData.club.primary_colour;
   const primaryText = contrastText(primaryColour);
-  const supabase = await createClient();
-  const { data: srpToggle } = await supabase
-    .from('feature_toggles')
-    .select('is_enabled')
-    .eq('club_id', clubData.club.id)
-    .eq('feature_key', 'squad_rotation_planner')
-    .maybeSingle<{ is_enabled: boolean | null }>();
   const clubSettings = (
     <div className="space-y-4">
       <section className="rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -33,9 +24,9 @@ export default async function ClubSettingsPage() {
         </div>
       </section>
       <section className="rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-        <h2 className="text-xl font-bold">Player of the Match</h2>
-        <p className="mt-2 text-sm text-white/40">Set club-wide POTM message rules, coach voting and player voting age.</p>
-        <Link href="/dashboard/club/settings/potm" className="mt-5 inline-flex rounded-full px-5 py-3 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: primaryText }}>Manage POTM Settings</Link>
+        <h2 className="text-xl font-bold">Manage Tools</h2>
+        <p className="mt-2 text-sm text-white/40">Enable, lock or review coach requests for club tools.</p>
+        <Link href="/dashboard/club/tools" className="mt-5 inline-flex rounded-full px-5 py-3 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: primaryText }}>Open Tools</Link>
       </section>
       <ClubBrandingSettings
         clubId={clubData.club.id}
@@ -43,13 +34,7 @@ export default async function ClubSettingsPage() {
         allowTeamBadges={clubData.club.allow_team_badges}
         primaryColour={primaryColour}
       />
-      <ClubSrpSettings clubId={clubData.club.id} initiallyEnabled={srpToggle?.is_enabled ?? false} primaryColour={primaryColour} />
       <ClubJoinCodeSettings clubId={clubData.club.id} clubName={clubData.club.name} joinCode={clubData.club.coach_join_code} />
-      <section className="rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-        <h2 className="text-xl font-bold">Coach Recognition</h2>
-        <p className="mt-2 text-sm text-white/40">Set positive ticket thresholds and rewards for coach recognition.</p>
-        <Link href="/dashboard/club/settings/recognition" className="mt-5 inline-flex rounded-full px-5 py-3 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: primaryText }}>Manage Recognition</Link>
-      </section>
     </div>
   );
 

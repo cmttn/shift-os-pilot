@@ -6,17 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 import { contrastText as getContrastText } from '@/lib/utils/contrastText';
-
-const tools = [
-  ['game_time_tracker', 'Game Time Tracker', 'Free', 'Track minutes played per player', '/dashboard/coach'],
-  ['availability_manager', 'Availability Manager', 'Free', 'Send polls and track player availability', '/dashboard/coach/schedule'],
-  ['announcement_builder', 'Announcement Builder', 'Free', 'Send updates to coaches and parents', '/dashboard/coach/messages'],
-  ['fair_play_reports', 'Fair Play Reports', 'Pro', 'Full game time reports', '/dashboard/coach/stats'],
-  ['structured_conversations', 'Structured Conversations', 'Pro', 'Structured ticket workflows', '/dashboard/coach/tickets'],
-  ['parent_engagement', 'Parent Engagement', 'Pro', 'Track parent response rates', '/dashboard/coach/stats'],
-  ['squad_rotation_planner', 'Squad Rotation Planner', 'Pro', 'More minutes. Less subs. Less pressure. More smiles.', '/dashboard/coach/tools/srp'],
-  ['potm', 'Player of the Match', 'Pro (unlocked for testing)', 'Run automated POTM polls and generate social cards', '/dashboard/coach/tools/potm']
-] as const;
+import CoachToolsStrip from '@/components/dashboard/CoachToolsStrip';
 
 interface CoachDashboardClientProps {
   data: CoachDashboardData;
@@ -351,6 +341,8 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
             </section>
           ) : null}
 
+          <CoachToolsStrip data={data} activeTeamId={activeTeam?.id ?? ''} primaryColour={primaryColour} variant="mobile" />
+
           <section className="md:hidden">
             <div className="flex items-end justify-between gap-4">
               <div>
@@ -433,25 +425,9 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
                 ))}
               </div>
             </section>
-          </aside>
 
-          <section className="mt-8">
-            <h2 className="text-2xl font-bold text-white">Your Tools</h2>
-            <p className="mt-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-white/40">{isClubManaged ? `Tools managed by ${clubName}` : 'Manage your own tools'}</p>
-            <div className="mt-4 space-y-3">
-              {tools.map(([key, name, tier, description, href]) => {
-                const enabled = key === 'potm' ? true : isClubManaged ? data.enabledFeatures.includes(key) : true;
-                return (
-                  <Link href={href} key={key} className={`block rounded-xl border p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 ${enabled ? '' : 'opacity-45'}`} style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div><p className="font-semibold text-white">{key === 'potm' ? 'Player of the Match' : name}</p><p className="text-xs text-white/35">{description}</p><p className="mt-1 text-xs text-white/25">{tier}</p></div>
-                      <span className="text-xs text-white/40">{enabled ? (isClubManaged ? `Enabled by ${clubName}` : 'Enabled') : 'Not enabled by your club'}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
+            <CoachToolsStrip data={data} activeTeamId={activeTeam?.id ?? ''} primaryColour={primaryColour} variant="desktop" />
+          </aside>
         </div>
       </div>
     </main>

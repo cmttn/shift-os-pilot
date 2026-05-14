@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getDefaultEnabledToolKeys, TOOL_FEATURE_KEYS } from '@/lib/tools/toolRegistry';
 import { resolveTeamBranding } from '@/lib/utils/teamBranding';
 
 export interface CoachDashboardData {
@@ -62,6 +63,11 @@ export interface CoachDashboardData {
     week_off_count: number;
   }>;
   enabledFeatures: string[];
+  toolUnlockRequests: Array<{
+    feature_key: string;
+    team_id: string | null;
+    status: 'pending' | 'resolved' | 'dismissed' | string;
+  }>;
   isClubManaged: boolean;
 }
 
@@ -138,16 +144,11 @@ interface PollResponseCount {
   status: string | null;
 }
 
-const FREE_FEATURE_KEYS = ['game_time_tracker', 'availability_manager', 'announcement_builder'] as const;
-const COACH_FEATURE_KEYS = [
-  'game_time_tracker',
-  'availability_manager',
-  'announcement_builder',
-  'fair_play_reports',
-  'structured_conversations',
-  'parent_engagement',
-  'squad_rotation_planner'
-] as const;
+interface ToolUnlockRequestRow {
+  feature_key: string | null;
+  team_id: string | null;
+  status: string | null;
+}
 
 function getFirstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -183,7 +184,8 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       activeTeamId: '',
       players: [],
       upcomingSessions: [],
-      enabledFeatures: ['game_time_tracker', 'availability_manager', 'announcement_builder'],
+      enabledFeatures: getDefaultEnabledToolKeys(),
+      toolUnlockRequests: [],
       isClubManaged: false
     };
   }
@@ -295,18 +297,31 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
   const activeTeam = teams[0];
   const isClubManaged = activeTeam?.is_club_managed ?? false;
   const managedClubId = activeTeam?.club_id ?? null;
-  const { data: featuresData } =
+  const [{ data: featuresData }, { data: unlockRequestsData }] = await Promise.all([
     managedClubId
-      ? await supabase.from('feature_toggles').select('feature_key,is_enabled').eq('club_id', managedClubId)
-      : { data: [] as Array<{ feature_key: string | null; is_enabled: boolean | null }> };
+      ? supabase.from('feature_toggles').select('feature_key,is_enabled').eq('club_id', managedClubId)
+      : Promise.resolve({ data: [] as Array<{ feature_key: string | null; is_enabled: boolean | null }> }),
+    supabase
+      .from('tool_unlock_requests')
+      .select('feature_key,team_id,status')
+      .eq('coach_user_id', session.user.id)
+      .eq('status', 'pending')
+  ]);
   const featureRows = featuresData ?? [];
   const enabledFeatures = isClubManaged
-    ? COACH_FEATURE_KEYS.filter((featureKey) => {
+    ? TOOL_FEATURE_KEYS.filter((featureKey) => {
         const toggle = featureRows.find((feature) => feature.feature_key === featureKey);
         if (toggle) return Boolean(toggle.is_enabled);
-        return (FREE_FEATURE_KEYS as readonly string[]).includes(featureKey);
+        return getDefaultEnabledToolKeys().includes(featureKey);
       })
-    : [...COACH_FEATURE_KEYS];
+    : [...TOOL_FEATURE_KEYS];
+  const toolUnlockRequests = ((unlockRequestsData ?? []) as ToolUnlockRequestRow[])
+    .filter((request) => request.feature_key)
+    .map((request) => ({
+      feature_key: request.feature_key ?? '',
+      team_id: request.team_id ?? null,
+      status: request.status ?? 'pending'
+    }));
 
   return {
     coach: { id: session.user.id, full_name: fullName, email: session.user.email ?? '' },
@@ -315,6 +330,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
     players,
     upcomingSessions,
     enabledFeatures,
+    toolUnlockRequests,
     isClubManaged
   };
 }
