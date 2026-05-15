@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import PotmCardPreview from '@/components/dashboard/PotmCardPreview';
 import { getCoachData } from '@/lib/dashboard/getCoachData';
 import { createClient } from '@/lib/supabase/server';
 
 interface CoachPotmSettings {
   first_access_complete: boolean | null;
+  coach_message: string | null;
 }
 
 interface PotmPollRow {
@@ -43,7 +45,7 @@ export default async function CoachPotmHomePage() {
   const user = userData.user;
   if (!user) redirect('/auth/login');
 
-  const { data: settings } = await supabase.from('potm_coach_settings').select('first_access_complete').eq('user_id', user.id).maybeSingle<CoachPotmSettings>();
+  const { data: settings } = await supabase.from('potm_coach_settings').select('first_access_complete,coach_message').eq('user_id', user.id).maybeSingle<CoachPotmSettings>();
   if (!settings?.first_access_complete) redirect('/dashboard/coach/tools/potm/setup');
 
   const teamIds = coachData.teams.map((team) => team.id);
@@ -58,7 +60,9 @@ export default async function CoachPotmHomePage() {
   const playerIds = Array.from(new Set([...stats.map((stat) => stat.player_id), ...polls.map((poll) => poll.winner_player_id).filter((id): id is string => Boolean(id))]));
   const { data: playersData } = playerIds.length > 0 ? await supabase.from('players').select('id,first_name,last_name').in('id', playerIds) : { data: [] as PlayerRow[] };
   const players = (playersData ?? []) as PlayerRow[];
-  const primaryColour = coachData.teams[0]?.club_primary_colour ?? '#00C851';
+  const previewTeam = coachData.teams[0] ?? null;
+  const primaryColour = previewTeam?.club_primary_colour ?? '#00C851';
+  const previewMessage = settings.coach_message?.trim() || 'Outstanding performance today - you were brilliant from start to finish!';
 
   return (
     <main className="min-h-screen px-5 pb-24 pt-8 text-white md:ml-[260px]" style={{ backgroundColor: '#080a0f' }}>
@@ -67,6 +71,9 @@ export default async function CoachPotmHomePage() {
           <p className="text-xs uppercase tracking-[0.28em] text-white/30">Pro feature unlocked for testing</p>
           <h1 className="mt-2 text-3xl font-black">Player of the Match</h1>
           <p className="mt-2 text-sm text-white/40">Enable POTM polls for your upcoming matches.</p>
+          <a href="#potm-certificate-preview" className="mt-4 inline-flex text-xs font-medium text-white/30 transition-colors duration-300 ease-out hover:text-white/65">
+            See POTM certificate preview
+          </a>
         </header>
 
         <section className="mt-6 space-y-3">
@@ -99,6 +106,23 @@ export default async function CoachPotmHomePage() {
               return <p key={stat.player_id} className="rounded-xl bg-white/[0.03] p-3 text-sm text-white/75">{['🥇', '🥈', '🥉'][index] ?? '🏆'} {playerName(player)} — {stat.potm_count ?? 0} times</p>;
             })}
           </div>
+        </section>
+
+        <section id="potm-certificate-preview" className="mt-8 scroll-mt-8 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-white/30">Certificate preview</p>
+            <h2 className="mt-2 text-xl font-bold text-white">POTM certificate</h2>
+            <p className="mt-1 text-sm text-white/40">Design placeholder for review before final card styling is updated.</p>
+          </div>
+          <PotmCardPreview
+            playerName="shiftof"
+            teamName={previewTeam?.name ?? 'SHIFT OS Team'}
+            opponent="Match Day"
+            message={previewMessage}
+            primaryColour={primaryColour}
+            badgeUrl={previewTeam?.club_badge_url ?? null}
+            clubName={previewTeam?.club_name ?? null}
+          />
         </section>
       </div>
     </main>
