@@ -21,10 +21,8 @@ function playerHref(player: ParentPlayer | null): string {
 export default async function ParentDashboardLayout({ children }: { children: ReactNode }) {
   const parentData = await getParentDashboardData();
   const primaryColour = parentData?.allSameClub ? parentData.globalPrimaryColour : '#00C851';
-  const firstPlayer = parentData?.players[0] ?? null;
   const parentItems: DesktopSidebarItem[] = [
     { href: '/dashboard/parent', label: 'Home', icon: 'home' },
-    { href: playerHref(firstPlayer), label: firstPlayer ? `${firstPlayer.first_name || 'Player'} Profile` : 'Player Profile', icon: 'profile', activePaths: ['/dashboard/parent/player'] },
     { href: '/dashboard/parent/schedule', label: 'Schedule', icon: 'calendar' },
     { href: '/dashboard/parent/goals', label: 'Goals', icon: 'goals', activePaths: ['/dashboard/parent/goals', '/dashboard/parent/stars'] },
     { href: '/dashboard/parent/potm', label: 'POTM Library', icon: 'potm' },
@@ -42,6 +40,13 @@ export default async function ParentDashboardLayout({ children }: { children: Re
         primaryColour={primaryColour}
         items={parentItems}
         email={parentData?.email}
+        profileSwitcher={parentData && parentData.players.length > 0 ? {
+          profiles: parentData.players.map((player) => ({
+            id: player.id,
+            name: player.first_name || player.full_name,
+            href: playerHref(player)
+          }))
+        } : undefined}
       />
       <div className="pb-24 md:pb-0 md:pl-[260px]">{children}</div>
       <MobileBottomNav role="parent" primaryColour={primaryColour} />

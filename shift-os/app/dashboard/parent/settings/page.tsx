@@ -13,7 +13,11 @@ export default async function ParentSettingsPage() {
   const linkedPlayers = parentData.players.map((player) => ({
     id: player.id,
     name: player.full_name,
-    teamName: player.teams[0]?.team_name ?? 'Team'
+    teamName: player.teams[0]?.team_name ?? 'Team',
+    medicalNotes: player.medical_notes,
+    medicalNoKnown: player.medical_no_known,
+    socialMediaConsent: player.social_media_consent,
+    additionalNotes: player.additional_notes
   }));
   const playerIds = parentData.players.map((player) => player.id);
   const supabase = await createClient();

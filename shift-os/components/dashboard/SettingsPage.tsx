@@ -38,11 +38,23 @@ interface LinkedPlayer {
   id: string;
   name: string;
   teamName: string;
+  medicalNotes: string | null;
+  medicalNoKnown: boolean;
+  socialMediaConsent: boolean | null;
+  additionalNotes: string | null;
 }
 
 interface PlayerOwnershipRow {
   parent_user_id: string | null;
   co_parent_user_id: string | null;
+}
+
+interface ChildInfoDraft {
+  medicalNotes: string;
+  medicalNoKnown: boolean;
+  socialMediaConsent: '' | 'yes' | 'no';
+  additionalNotes: string;
+  open: boolean;
 }
 
 interface SettingsPageProps {
@@ -193,6 +205,20 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [children, setChildren] = useState(linkedPlayers);
+  const [childInfoDrafts, setChildInfoDrafts] = useState<Record<string, ChildInfoDraft>>(() =>
+    Object.fromEntries(
+      linkedPlayers.map((player) => [
+        player.id,
+        {
+          medicalNotes: player.medicalNotes ?? '',
+          medicalNoKnown: player.medicalNoKnown,
+          socialMediaConsent: player.socialMediaConsent === true ? 'yes' : player.socialMediaConsent === false ? 'no' : '',
+          additionalNotes: player.additionalNotes ?? '',
+          open: false
+        }
+      ])
+    )
+  );
   const textColour = contrastText(primaryColour);
   const feedUrl = calendarToken ? `webcal://${calendarHost()}/api/calendar/${calendarToken}` : '';
   const googleCalendarUrl = feedUrl ? `https://www.google.com/calendar/render?cid=${encodeURIComponent(feedUrl)}` : '#';
@@ -349,7 +375,59 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
       return;
     }
     setChildren((current) => current.filter((player) => player.id !== playerId));
+    setChildInfoDrafts((current) => {
+      const next = { ...current };
+      delete next[playerId];
+      return next;
+    });
     showSaved(`${name} removed from your account`);
+  }
+
+  function updateChildInfoDraft(playerId: string, values: Partial<ChildInfoDraft>) {
+    setChildInfoDrafts((current) => {
+      const existing = current[playerId] ?? { medicalNotes: '', medicalNoKnown: false, socialMediaConsent: '', additionalNotes: '', open: true };
+      return { ...current, [playerId]: { ...existing, ...values } };
+    });
+  }
+
+  async function saveChildInfo(playerId: string, name: string) {
+    const draft = childInfoDrafts[playerId];
+    if (!draft) return;
+    const trimmedMedical = draft.medicalNotes.trim();
+    const trimmedAdditional = draft.additionalNotes.trim();
+    if (!draft.medicalNoKnown && trimmedMedical.length === 0) {
+      setMessage('');
+      setError(`Add medical information for ${name}, or tick no known medical information.`);
+      return;
+    }
+
+    const socialMediaConsent = draft.socialMediaConsent === 'yes' ? true : draft.socialMediaConsent === 'no' ? false : null;
+    const { error: updateError } = await createClient()
+      .from('players')
+      .update({
+        medical_notes: draft.medicalNoKnown ? null : trimmedMedical,
+        medical_no_known: draft.medicalNoKnown,
+        social_media_consent: socialMediaConsent,
+        additional_notes: trimmedAdditional || null
+      })
+      .eq('id', playerId)
+      .or(`parent_user_id.eq.${user.id},co_parent_user_id.eq.${user.id}`);
+
+    if (updateError) {
+      setMessage('');
+      setError(updateError.message);
+      return;
+    }
+
+    setChildren((current) => current.map((player) => player.id === playerId ? {
+      ...player,
+      medicalNotes: draft.medicalNoKnown ? null : trimmedMedical,
+      medicalNoKnown: draft.medicalNoKnown,
+      socialMediaConsent,
+      additionalNotes: trimmedAdditional || null
+    } : player));
+    updateChildInfoDraft(playerId, { open: false });
+    showSaved(`${name}'s medical info saved`);
   }
 
   const title = useMemo(() => {
@@ -443,15 +521,78 @@ export default function SettingsPage({ role, user, profile, primaryColour = '#00
                 <section className={cardClass}>
                   <h2 className="text-xl font-bold">My Children</h2>
                   <div className="mt-5 space-y-3">
-                    {children.length === 0 ? <p className="text-sm text-white/35">No linked players.</p> : children.map((player) => (
-                      <div key={player.id} className="flex items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                        <div>
-                          <p className="text-sm font-semibold text-white">{player.name}</p>
-                          <p className="mt-1 text-xs text-white/35">{player.teamName}</p>
+                    {children.length === 0 ? <p className="text-sm text-white/35">No linked players.</p> : children.map((player) => {
+                      const draft = childInfoDrafts[player.id] ?? { medicalNotes: '', medicalNoKnown: false, socialMediaConsent: '', additionalNotes: '', open: false };
+                      const medicalStatus = player.medicalNoKnown ? 'No known medical info' : player.medicalNotes?.trim() ? 'Medical info added' : 'Medical info missing';
+                      const consentStatus = player.socialMediaConsent === true ? 'Consent given' : player.socialMediaConsent === false ? 'No social consent' : 'Consent not set';
+                      return (
+                      <div key={player.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{player.name}</p>
+                            <p className="mt-1 text-xs text-white/35">{player.teamName}</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-xs text-white/35">{medicalStatus}</span>
+                              <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-xs text-white/35">{consentStatus}</span>
+                            </div>
+                          </div>
+                          <button type="button" onClick={() => void removeChild(player.id, player.name)} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/55">Remove</button>
                         </div>
-                        <button type="button" onClick={() => void removeChild(player.id, player.name)} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/55">Remove</button>
+
+                        <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/10 p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-semibold text-white">Medical info</p>
+                              <p className="mt-1 text-xs text-white/35">Add allergies, conditions, injuries, needs or useful notes for coaches.</p>
+                            </div>
+                            <button type="button" onClick={() => updateChildInfoDraft(player.id, { open: !draft.open })} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65">
+                              {player.medicalNotes || player.medicalNoKnown || player.additionalNotes ? 'Edit info' : 'Add info'}
+                            </button>
+                          </div>
+
+                          {draft.open ? (
+                            <div className="mt-4 space-y-4">
+                              <label className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-sm text-white/70">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.medicalNoKnown}
+                                  onChange={(event) => updateChildInfoDraft(player.id, { medicalNoKnown: event.target.checked })}
+                                />
+                                No known medical information to declare
+                              </label>
+                              <div>
+                                <FieldLabel label="Medical information" helper="Conditions, allergies, injuries or support needs the club should know about." />
+                                <textarea
+                                  value={draft.medicalNotes}
+                                  onChange={(event) => updateChildInfoDraft(player.id, { medicalNotes: event.target.value })}
+                                  disabled={draft.medicalNoKnown}
+                                  className={`${inputClass} min-h-28 resize-none disabled:cursor-not-allowed disabled:opacity-45`}
+                                />
+                              </div>
+                              <div>
+                                <FieldLabel label="Social media consent" helper="Official club/team photos and videos." />
+                                <div className="grid gap-2 md:grid-cols-2">
+                                  <button type="button" onClick={() => updateChildInfoDraft(player.id, { socialMediaConsent: 'yes' })} className="rounded-xl border px-4 py-3 text-left text-sm" style={draft.socialMediaConsent === 'yes' ? { borderColor: primaryColour, backgroundColor: `${primaryColour}14`, color: '#ffffff' } : { borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}>Yes, I give consent</button>
+                                  <button type="button" onClick={() => updateChildInfoDraft(player.id, { socialMediaConsent: 'no' })} className="rounded-xl border px-4 py-3 text-left text-sm" style={draft.socialMediaConsent === 'no' ? { borderColor: primaryColour, backgroundColor: `${primaryColour}14`, color: '#ffffff' } : { borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}>No, I do not give consent</button>
+                                </div>
+                              </div>
+                              <div>
+                                <FieldLabel label="Anything else we should know?" helper="Transport, support needs, family arrangements or preferred contact details." />
+                                <textarea
+                                  value={draft.additionalNotes}
+                                  onChange={(event) => updateChildInfoDraft(player.id, { additionalNotes: event.target.value })}
+                                  className={`${inputClass} min-h-24 resize-none`}
+                                />
+                              </div>
+                              <button type="button" onClick={() => void saveChildInfo(player.id, player.name)} className="w-full rounded-full px-6 py-2.5 text-sm font-bold md:w-auto" style={{ background: `linear-gradient(135deg, ${primaryColour}, ${primaryColour}cc)`, color: textColour }}>
+                                Save medical info
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    ))}
+                    );
+                    })}
                     <p className="text-xs text-white/30">The team coach controls adding new players. Contact your coach to link additional children.</p>
                   </div>
                 </section>

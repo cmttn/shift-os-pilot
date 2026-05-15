@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 import { signOut } from '@/lib/auth/signOut';
 
 type SidebarIcon = 'home' | 'profile' | 'calendar' | 'goals' | 'potm' | 'tickets' | 'bell' | 'settings';
@@ -13,6 +14,12 @@ export interface DesktopSidebarItem {
   activePaths?: string[];
 }
 
+export interface DesktopSidebarProfile {
+  id: string;
+  name: string;
+  href: string;
+}
+
 interface DashboardDesktopSidebarProps {
   title: string;
   subtitle: string;
@@ -20,6 +27,9 @@ interface DashboardDesktopSidebarProps {
   primaryColour: string;
   items: DesktopSidebarItem[];
   email?: string;
+  profileSwitcher?: {
+    profiles: DesktopSidebarProfile[];
+  };
 }
 
 function Icon({ type }: { type: SidebarIcon }) {
@@ -39,9 +49,18 @@ function isActive(pathname: string, item: DesktopSidebarItem): boolean {
   return (item.activePaths ?? []).some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-export default function DashboardDesktopSidebar({ title, subtitle, initials, primaryColour, items, email }: DashboardDesktopSidebarProps) {
+function possessiveName(name: string): string {
+  return name.trim().endsWith('s') ? `${name.trim()}'` : `${name.trim()}'s`;
+}
+
+export default function DashboardDesktopSidebar({ title, subtitle, initials, primaryColour, items, email, profileSwitcher }: DashboardDesktopSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [profilesOpen, setProfilesOpen] = useState(false);
+  const selectedProfile = useMemo(() => {
+    const profiles = profileSwitcher?.profiles ?? [];
+    return profiles.find((profile) => pathname.includes(`/player/${profile.id}`) || pathname.includes(`/stars/${profile.id}`)) ?? profiles[0] ?? null;
+  }, [pathname, profileSwitcher?.profiles]);
 
   async function handleSignOut() {
     await signOut();
@@ -59,6 +78,33 @@ export default function DashboardDesktopSidebar({ title, subtitle, initials, pri
         <p className="mt-1 text-xs uppercase tracking-[0.28em] text-white/25">{subtitle}</p>
         <div className="mt-5 h-px w-full bg-white/[0.06]" />
       </div>
+
+      {profileSwitcher && selectedProfile ? (
+        <div className="relative px-3 pb-3">
+          <button
+            type="button"
+            onClick={() => setProfilesOpen((open) => !open)}
+            className="flex w-full items-center gap-3 rounded-[10px] px-4 py-3 text-left text-sm text-white transition-all duration-300 ease-out hover:bg-white/[0.04]"
+            style={{ backgroundColor: pathname.includes(`/player/${selectedProfile.id}`) ? `${primaryColour}1f` : 'rgba(255,255,255,0.03)', borderLeft: `2px solid ${primaryColour}` }}
+          >
+            <span className="flex h-5 w-5 items-center justify-center" style={{ color: primaryColour }}>
+              <Icon type="profile" />
+            </span>
+            <span className="min-w-0 flex-1 truncate font-semibold">{possessiveName(selectedProfile.name)} Profile</span>
+            <span className="text-xs text-white/35">v</span>
+          </button>
+          {profilesOpen ? (
+            <div className="absolute left-3 right-3 top-14 z-50 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d1117] shadow-2xl">
+              {profileSwitcher.profiles.map((profile) => (
+                <Link key={profile.id} href={profile.href} onClick={() => setProfilesOpen(false)} className="flex items-center justify-between gap-3 px-4 py-3 text-sm text-white/65 transition hover:bg-white/[0.04] hover:text-white">
+                  <span className="truncate">{possessiveName(profile.name)} Profile</span>
+                  {profile.id === selectedProfile.id ? <span style={{ color: primaryColour }}>✓</span> : null}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <nav className="flex-1 space-y-1 px-3" aria-label="Dashboard quick links">
         {items.map((item) => {
