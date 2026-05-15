@@ -115,7 +115,7 @@ export default async function CoachPotmHomePage() {
             <p className="mt-1 text-sm text-white/40">Preview how the winner card will look before it is published.</p>
           </div>
           <PotmCardPreview
-            playerName="Shift OS"
+            playerName="Player Name"
             teamName={previewTeam?.name ?? 'SHIFT OS Team'}
             opponent="Match Day"
             message={previewMessage}

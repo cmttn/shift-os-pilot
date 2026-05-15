@@ -142,7 +142,7 @@ export default function PotmSetupPage() {
           <div>
             <p className="mb-3 text-xs uppercase tracking-[0.24em] text-white/30">Live card preview</p>
             <PotmCardPreview
-              playerName="Shift OS"
+              playerName="Player Name"
               teamName={teamName}
               opponent="Match Day"
               message={previewMessage}
