@@ -49,30 +49,30 @@ export default function PotmCardPreview({ playerName, teamName, opponent, messag
         />
       </svg>
 
-      <div className="relative flex h-full flex-col p-5 sm:p-8">
-        <div className="flex h-[31%] min-h-[132px] flex-col items-center">
-          <p className="whitespace-nowrap text-center text-[clamp(12px,3.5vw,24px)] font-black uppercase leading-none tracking-[0.13em] text-white sm:tracking-[0.22em]">Player of the Match</p>
-          <div className="mt-1 flex h-24 w-24 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)] sm:mt-2 sm:h-36 sm:w-36">
-            {badgeUrl ? <img src={badgeUrl} alt="" className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center rounded-[24px] bg-white/15 text-3xl font-black text-white ring-1 ring-white/20 sm:rounded-[30px] sm:text-4xl">{initials(displayClub)}</div>}
+      <div className="relative flex h-full flex-col p-4 sm:p-8">
+        <div className="flex flex-col items-center">
+          <p className="whitespace-nowrap text-center text-[clamp(12px,3.4vw,24px)] font-black uppercase leading-none tracking-[0.13em] text-white sm:tracking-[0.22em]">Player of the Match</p>
+          <div className="mt-1 flex h-28 w-28 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)] sm:mt-2 sm:h-44 sm:w-44">
+            {badgeUrl ? <img src={badgeUrl} alt="" className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center rounded-[24px] bg-white/15 text-3xl font-black text-white ring-1 ring-white/20 sm:rounded-[34px] sm:text-5xl">{initials(displayClub)}</div>}
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col justify-center py-2">
-          <h3 className="text-center text-[clamp(36px,9.4vw,66px)] font-black leading-[0.92] tracking-[-0.02em] text-white drop-shadow-[0_8px_20px_rgba(0,0,0,0.35)] [overflow-wrap:anywhere]">{playerName}</h3>
-          <div className="mt-3 text-center sm:mt-4">
-            <p className="text-base font-bold text-white/90">{teamName}</p>
-            <p className="mt-0.5 text-sm text-white/60">vs {opponent}</p>
+        <div className="mt-1 flex flex-col items-center sm:mt-3">
+          <h3 className="text-center text-[clamp(34px,8.7vw,64px)] font-black leading-[0.9] tracking-[-0.02em] text-white drop-shadow-[0_8px_20px_rgba(0,0,0,0.35)] [overflow-wrap:anywhere]">{playerName}</h3>
+          <div className="mt-2 text-center sm:mt-3">
+            <p className="text-sm font-bold text-white/90 sm:text-base">{teamName}</p>
+            <p className="mt-0.5 text-xs text-white/60 sm:text-sm">vs {opponent}</p>
           </div>
-          <p className="mx-auto mt-3 text-[9px] font-semibold uppercase tracking-[0.13em] text-white/50 sm:text-[10px]">Awarded by parents</p>
+          <p className="mx-auto mt-2 text-[8px] font-semibold uppercase tracking-[0.12em] text-white/50 sm:mt-3 sm:text-[10px]">Awarded by parents</p>
         </div>
 
-        <div className="mt-2 rounded-2xl border border-white/[0.08] bg-black/[0.18] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur sm:mt-3 sm:p-4">
+        <div className="mt-2 rounded-2xl border border-white/[0.08] bg-black/[0.18] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur sm:mt-4 sm:p-4">
           <p className="line-clamp-2 text-xs italic leading-relaxed text-white/86 sm:line-clamp-3 sm:text-sm">&ldquo;{displayMessage}&rdquo;</p>
         </div>
 
-        <div className="flex items-end justify-between gap-4 px-2 pb-2 pt-4 text-[8px] font-semibold uppercase sm:px-3 sm:pb-3">
-          <span className="min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis pr-4 pb-1 text-[8px] tracking-[0.08em] text-white/38 sm:text-[9px] sm:tracking-[0.11em]">{displayClub}</span>
-          <span className="shrink-0 text-[6px] text-white/20 sm:text-[7px]">Powered by SHIFT/OS</span>
+        <div className="relative mt-auto min-h-10 px-2 pb-2 pt-3 font-semibold uppercase sm:min-h-12 sm:px-3 sm:pb-3">
+          <span className="absolute bottom-5 left-2 right-2 whitespace-nowrap text-[7px] tracking-[0.05em] text-white/40 sm:bottom-6 sm:text-[9px] sm:tracking-[0.08em]">{displayClub}</span>
+          <span className="absolute bottom-1 right-2 text-[5px] tracking-[0.12em] text-white/20 sm:bottom-2 sm:right-3 sm:text-[7px]">Powered by SHIFT/OS</span>
         </div>
       </div>
     </article>

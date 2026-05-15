@@ -125,27 +125,27 @@ export async function POST(request: Request) {
           d: 'M57 23h66v28h31c-1 29-14 49-38 58-5 14-14 24-26 29v24h34v18H56v-18h34v-24c-12-5-21-15-26-29-24-9-37-29-38-58h31V23Zm0 46H43c3 14 9 24 19 30-3-10-5-20-5-30Zm61 30c10-6 16-16 19-30h-14c0 10-2 20-5 30Z'
         })
       ),
-      React.createElement('div', { key: 'content', style: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%', padding: 62 } }, [
+      React.createElement('div', { key: 'content', style: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', height: '100%', padding: 58 } }, [
         React.createElement('div', { key: 'label', style: { width: '100%', textAlign: 'center', fontSize: 43, lineHeight: 1, letterSpacing: 8, fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.94)' } }, 'PLAYER OF THE MATCH'),
-        React.createElement('div', { key: 'badge-wrap', style: { marginTop: 16, width: 250, height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+        React.createElement('div', { key: 'badge-wrap', style: { marginTop: 10, width: 292, height: 292, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
           club?.badge_url
-            ? React.createElement('img', { key: 'badge', src: club.badge_url, width: 250, height: 250, style: { objectFit: 'contain' } })
-            : React.createElement('div', { key: 'badge-fallback', style: { width: 232, height: 232, borderRadius: 44, backgroundColor: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 70, fontWeight: 900 } }, initials(displayClub))
+            ? React.createElement('img', { key: 'badge', src: club.badge_url, width: 292, height: 292, style: { objectFit: 'contain' } })
+            : React.createElement('div', { key: 'badge-fallback', style: { width: 268, height: 268, borderRadius: 52, backgroundColor: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 78, fontWeight: 900 } }, initials(displayClub))
         ),
-        React.createElement('div', { key: 'main', style: { marginTop: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' } }, [
+        React.createElement('div', { key: 'main', style: { marginTop: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' } }, [
           React.createElement('div', { key: 'name', style: { maxWidth: 900, textAlign: 'center', fontSize: nameSize, lineHeight: 0.92, fontWeight: 900, letterSpacing: -3 } }, winnerName),
-          React.createElement('div', { key: 'fixture', style: { marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' } }, [
+          React.createElement('div', { key: 'fixture', style: { marginTop: 18, display: 'flex', flexDirection: 'column', alignItems: 'center' } }, [
             React.createElement('div', { key: 'team', style: { fontSize: 31, fontWeight: 900, color: 'rgba(255,255,255,0.92)' } }, team.name),
             React.createElement('div', { key: 'opponent', style: { marginTop: 7, fontSize: 24, color: 'rgba(255,255,255,0.64)' } }, `vs ${opponent}`)
           ]),
-          React.createElement('div', { key: 'parents', style: { marginTop: 22, fontSize: 14, letterSpacing: 3, fontWeight: 800, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' } }, 'Awarded by parents')
+          React.createElement('div', { key: 'parents', style: { marginTop: 16, fontSize: 14, letterSpacing: 3, fontWeight: 800, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' } }, 'Awarded by parents')
         ]),
-        React.createElement('div', { key: 'quote', style: { marginTop: 22, border: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 30, padding: '22px 30px', width: 824 } },
+        React.createElement('div', { key: 'quote', style: { marginTop: 20, border: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 30, padding: '22px 30px', width: 824 } },
           React.createElement('div', { style: { fontSize: 26, fontStyle: 'italic', lineHeight: 1.28, color: 'rgba(255,255,255,0.88)' } }, `"${message}"`)
         ),
-        React.createElement('div', { key: 'footer', style: { marginTop: 'auto', padding: '28px 20px 12px', width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 28, fontWeight: 800, textTransform: 'uppercase', color: 'rgba(255,255,255,0.32)' } }, [
-          React.createElement('span', { key: 'club', style: { flex: 1, paddingBottom: 10, paddingRight: 28, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'rgba(255,255,255,0.38)', fontSize: 13, letterSpacing: 2.1 } }, displayClub),
-          React.createElement('span', { key: 'powered', style: { flexShrink: 0, color: 'rgba(255,255,255,0.2)', fontSize: 8, letterSpacing: 4 } }, 'Powered by SHIFT/OS')
+        React.createElement('div', { key: 'footer', style: { position: 'relative', marginTop: 'auto', width: '100%', height: 70, fontWeight: 800, textTransform: 'uppercase' } }, [
+          React.createElement('span', { key: 'club', style: { position: 'absolute', left: 20, right: 20, bottom: 34, overflow: 'hidden', whiteSpace: 'nowrap', color: 'rgba(255,255,255,0.4)', fontSize: 13, letterSpacing: 1.8 } }, displayClub),
+          React.createElement('span', { key: 'powered', style: { position: 'absolute', right: 20, bottom: 10, color: 'rgba(255,255,255,0.2)', fontSize: 8, letterSpacing: 4 } }, 'Powered by SHIFT/OS')
         ])
       ])
     ]),
