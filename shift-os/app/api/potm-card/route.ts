@@ -23,18 +23,19 @@ interface PlayerRow {
 interface SessionRow {
   opponent: string | null;
   title: string | null;
-  session_date: string;
 }
 
 interface TeamRow {
   name: string;
   club_id: string | null;
+  secondary_colour: string | null;
 }
 
 interface ClubRow {
   name: string;
   badge_url: string | null;
   primary_colour: string | null;
+  secondary_colour: string | null;
 }
 
 function isCardPayload(value: unknown): value is CardPayload {
@@ -47,13 +48,24 @@ function fullName(player: PlayerRow | null): string {
   return [player?.first_name, player?.last_name].map((part) => part?.trim()).filter(Boolean).join(' ') || 'Player';
 }
 
+function initials(name: string): string {
+  return name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'SO';
+}
+
 function darkenHex(hex: string, percent: number): string {
   const clean = hex.replace('#', '');
-  const num = parseInt(clean, 16);
-  const r = Math.max(0, (num >> 16) - Math.round((255 * percent) / 100));
-  const g = Math.max(0, ((num >> 8) & 0xff) - Math.round((255 * percent) / 100));
-  const b = Math.max(0, (num & 0xff) - Math.round((255 * percent) / 100));
+  const num = parseInt(clean.length === 6 ? clean : 'fff200', 16);
+  const amount = Math.round((255 * percent) / 100);
+  const r = Math.max(0, (num >> 16) - amount);
+  const g = Math.max(0, ((num >> 8) & 0xff) - amount);
+  const b = Math.max(0, (num & 0xff) - amount);
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+function fitNameSize(name: string): number {
+  if (name.length > 24) return 82;
+  if (name.length > 17) return 96;
+  return 116;
 }
 
 export async function POST(request: Request) {
@@ -65,49 +77,74 @@ export async function POST(request: Request) {
 
   const [{ data: player }, { data: session }, { data: team }] = await Promise.all([
     supabase.from('players').select('first_name,last_name').eq('id', poll.winner_player_id).maybeSingle<PlayerRow>(),
-    supabase.from('sessions').select('opponent,title,session_date').eq('id', poll.session_id).maybeSingle<SessionRow>(),
-    supabase.from('teams').select('name,club_id').eq('id', poll.team_id).maybeSingle<TeamRow>()
+    supabase.from('sessions').select('opponent,title').eq('id', poll.session_id).maybeSingle<SessionRow>(),
+    supabase.from('teams').select('name,club_id,secondary_colour').eq('id', poll.team_id).maybeSingle<TeamRow>()
   ]);
   if (!player || !session || !team) return NextResponse.json({ error: 'Missing card data' }, { status: 400 });
-  const { data: club } = team.club_id ? await supabase.from('clubs').select('name,badge_url,primary_colour').eq('id', team.club_id).maybeSingle<ClubRow>() : { data: null };
-  const primary = club?.primary_colour ?? '#00C851';
+
+  const { data: club } = team.club_id
+    ? await supabase.from('clubs').select('name,badge_url,primary_colour,secondary_colour').eq('id', team.club_id).maybeSingle<ClubRow>()
+    : { data: null };
+
+  const primary = club?.primary_colour ?? '#fff200';
+  const secondary = club?.secondary_colour ?? team.secondary_colour ?? darkenHex(primary, 46);
+  const deep = '#08090d';
   const opponent = session.opponent ?? session.title ?? 'Match Day';
-  const date = new Date(session.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  const message = poll.coach_message_used ?? 'Outstanding performance today - you were brilliant from start to finish!';
+  const message = poll.coach_message_used ?? 'Outstanding effort today - keep it up.';
+  const winnerName = fullName(player);
+  const displayClub = club?.name ?? team.name;
+  const nameSize = fitNameSize(winnerName);
 
   const image = new ImageResponse(
     React.createElement('div', {
       style: {
-        width: '1200px',
-        height: '630px',
+        width: '1080px',
+        height: '1080px',
         display: 'flex',
+        position: 'relative',
+        overflow: 'hidden',
         color: 'white',
-        background: `linear-gradient(135deg, ${primary} 0%, ${darkenHex(primary, 40)} 100%)`,
-        fontFamily: 'Arial, sans-serif',
-        position: 'relative'
+        backgroundColor: deep,
+        fontFamily: 'Arial, sans-serif'
       }
     }, [
-      React.createElement('div', { key: 'left', style: { width: '40%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' } }, [
-        club?.badge_url
-          ? React.createElement('img', { key: 'badge', src: club.badge_url, width: 140, height: 140, style: { borderRadius: '9999px', border: '3px solid white', objectFit: 'cover' } })
-          : React.createElement('div', { key: 'badge-fallback', style: { width: 140, height: 140, borderRadius: 9999, border: '3px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, fontWeight: 900 } }, 'S'),
-        React.createElement('div', { key: 'club', style: { marginTop: 24, fontSize: 24, fontWeight: 800, textAlign: 'center' } }, club?.name ?? team.name)
-      ]),
-      React.createElement('div', { key: 'right', style: { width: '60%', display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: 72 } }, [
-        React.createElement('div', { key: 'label', style: { fontSize: 16, opacity: 0.7, letterSpacing: 4, fontWeight: 800 } }, '🏆 PLAYER OF THE MATCH'),
-        React.createElement('div', { key: 'name', style: { marginTop: 18, fontSize: 64, lineHeight: 1.05, fontWeight: 900 } }, fullName(player)),
-        React.createElement('div', { key: 'fixture', style: { marginTop: 18, fontSize: 24, opacity: 0.82 } }, `${team.name} vs ${opponent}`),
-        React.createElement('div', { key: 'date', style: { marginTop: 8, fontSize: 18, opacity: 0.62 } }, date),
-        React.createElement('div', { key: 'divider', style: { marginTop: 28, marginBottom: 24, height: 1, width: '100%', background: 'rgba(255,255,255,0.2)' } }),
-        React.createElement('div', { key: 'message', style: { fontSize: 22, fontStyle: 'italic', opacity: 0.9, lineHeight: 1.35 } }, message)
-      ]),
-      React.createElement('div', { key: 'bottom', style: { position: 'absolute', bottom: 26, left: 42, right: 42, display: 'flex', justifyContent: 'space-between', fontSize: 16 } }, [
-        React.createElement('span', { key: 'club-name', style: { fontWeight: 700 } }, club?.name ?? team.name),
-        React.createElement('span', { key: 'powered', style: { opacity: 0.3, fontSize: 14 } }, 'Powered by Shift OS')
+      React.createElement('div', { key: 'gradient', style: { position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 48%, ${deep} 100%)` } }),
+      React.createElement('div', { key: 'top-glow', style: { position: 'absolute', right: -210, top: -210, width: 560, height: 560, borderRadius: 9999, backgroundColor: `${primary}55` } }),
+      React.createElement('div', { key: 'bottom-glow', style: { position: 'absolute', left: -220, bottom: -240, width: 680, height: 680, borderRadius: 9999, backgroundColor: `${secondary}66` } }),
+      React.createElement('div', { key: 'shade', style: { position: 'absolute', inset: 0, background: 'linear-gradient(145deg, rgba(0,0,0,0.04), rgba(0,0,0,0.74))' } }),
+      React.createElement('div', { key: 'texture', style: { position: 'absolute', top: 88, left: -80, right: -80, transform: 'rotate(-12deg)', textAlign: 'center', fontSize: 98, letterSpacing: 34, fontWeight: 900, color: 'rgba(255,255,255,0.045)' } }, 'POTM POTM POTM'),
+      React.createElement('div', { key: 'angle', style: { position: 'absolute', top: -80, bottom: -80, right: 116, width: 150, transform: 'rotate(18deg)', backgroundColor: 'rgba(255,255,255,0.07)' } }),
+      React.createElement('div', { key: 'content', style: { position: 'relative', display: 'flex', flexDirection: 'column', width: '100%', height: '100%', padding: 78 } }, [
+        React.createElement('div', { key: 'top-row', style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 44 } }, [
+          React.createElement('div', { key: 'heading', style: { display: 'flex', flexDirection: 'column' } }, [
+            React.createElement('div', { key: 'label', style: { fontSize: 24, letterSpacing: 8, fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)' } }, 'PLAYER OF THE MATCH'),
+            React.createElement('div', { key: 'parents', style: { marginTop: 20, alignSelf: 'flex-start', border: '1px solid rgba(255,255,255,0.18)', backgroundColor: 'rgba(0,0,0,0.22)', borderRadius: 9999, padding: '10px 18px', fontSize: 19, letterSpacing: 3, fontWeight: 800, textTransform: 'uppercase', color: 'rgba(255,255,255,0.78)' } }, 'Awarded by parents')
+          ]),
+          React.createElement('div', { key: 'badge-wrap', style: { width: 190, height: 190, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+            club?.badge_url
+              ? React.createElement('img', { key: 'badge', src: club.badge_url, width: 190, height: 190, style: { objectFit: 'contain' } })
+              : React.createElement('div', { key: 'badge-fallback', style: { width: 176, height: 176, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, fontWeight: 900 } }, initials(displayClub))
+          )
+        ]),
+        React.createElement('div', { key: 'main', style: { marginTop: 'auto', display: 'flex', flexDirection: 'column' } }, [
+          React.createElement('div', { key: 'name', style: { maxWidth: 890, fontSize: nameSize, lineHeight: 0.95, fontWeight: 900, letterSpacing: -3 } }, winnerName),
+          React.createElement('div', { key: 'fixture', style: { marginTop: 36, display: 'flex', flexDirection: 'column' } }, [
+            React.createElement('div', { key: 'team', style: { fontSize: 34, fontWeight: 900, color: 'rgba(255,255,255,0.92)' } }, team.name),
+            React.createElement('div', { key: 'opponent', style: { marginTop: 8, fontSize: 26, color: 'rgba(255,255,255,0.64)' } }, `vs ${opponent}`)
+          ]),
+          React.createElement('div', { key: 'quote', style: { marginTop: 46, border: '1px solid rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.28)', borderRadius: 34, padding: '28px 32px', maxWidth: 824 } },
+            React.createElement('div', { style: { fontSize: 29, fontStyle: 'italic', lineHeight: 1.32, color: 'rgba(255,255,255,0.88)' } }, `"${message}"`)
+          )
+        ]),
+        React.createElement('div', { key: 'footer', style: { marginTop: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 28, fontSize: 15, letterSpacing: 4, fontWeight: 800, textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)' } }, [
+          React.createElement('span', { key: 'club', style: { maxWidth: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, displayClub),
+          React.createElement('span', { key: 'powered', style: { color: 'rgba(255,255,255,0.24)', fontSize: 13 } }, 'Powered by SHIFT/OS')
+        ])
       ])
     ]),
-    { width: 1200, height: 630 }
+    { width: 1080, height: 1080 }
   );
+
   const buffer = await image.arrayBuffer();
   const path = `${poll.id}/card.png`;
   const { error: uploadError } = await supabase.storage.from('potm-cards').upload(path, buffer, { contentType: 'image/png', upsert: true });

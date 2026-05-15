@@ -71,8 +71,8 @@ export default async function CoachPotmHomePage() {
           <p className="text-xs uppercase tracking-[0.28em] text-white/30">Pro feature unlocked for testing</p>
           <h1 className="mt-2 text-3xl font-black">Player of the Match</h1>
           <p className="mt-2 text-sm text-white/40">Enable POTM polls for your upcoming matches.</p>
-          <a href="#potm-certificate-preview" className="mt-4 inline-flex text-xs font-medium text-white/30 transition-colors duration-300 ease-out hover:text-white/65">
-            See POTM certificate preview
+          <a href="#potm-social-card-preview" className="mt-4 inline-flex text-xs font-medium text-white/30 transition-colors duration-300 ease-out hover:text-white/65">
+            See POTM social card preview
           </a>
         </header>
 
@@ -108,18 +108,19 @@ export default async function CoachPotmHomePage() {
           </div>
         </section>
 
-        <section id="potm-certificate-preview" className="mt-8 scroll-mt-8 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <section id="potm-social-card-preview" className="mt-8 scroll-mt-8 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="mb-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-white/30">Certificate preview</p>
-            <h2 className="mt-2 text-xl font-bold text-white">POTM certificate</h2>
-            <p className="mt-1 text-sm text-white/40">Design placeholder for review before final card styling is updated.</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/30">Social card preview</p>
+            <h2 className="mt-2 text-xl font-bold text-white">POTM social card preview</h2>
+            <p className="mt-1 text-sm text-white/40">Preview how the winner card will look before it is published.</p>
           </div>
           <PotmCardPreview
-            playerName="shiftof"
+            playerName="Shift OS"
             teamName={previewTeam?.name ?? 'SHIFT OS Team'}
             opponent="Match Day"
             message={previewMessage}
             primaryColour={primaryColour}
+            secondaryColour={previewTeam?.club_secondary_colour ?? null}
             badgeUrl={previewTeam?.club_badge_url ?? null}
             clubName={previewTeam?.club_name ?? null}
           />

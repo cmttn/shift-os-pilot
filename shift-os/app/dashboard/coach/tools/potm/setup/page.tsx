@@ -19,7 +19,7 @@ interface TeamCoachRow {
 interface TeamRow {
   name: string | null;
   club_id: string | null;
-  clubs?: { name: string | null; badge_url: string | null; primary_colour: string | null } | Array<{ name: string | null; badge_url: string | null; primary_colour: string | null }> | null;
+  clubs?: { name: string | null; badge_url: string | null; primary_colour: string | null; secondary_colour: string | null } | Array<{ name: string | null; badge_url: string | null; primary_colour: string | null; secondary_colour: string | null }> | null;
 }
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
@@ -30,6 +30,7 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
 export default function PotmSetupPage() {
   const router = useRouter();
   const [primaryColour, setPrimaryColour] = useState('#00C851');
+  const [secondaryColour, setSecondaryColour] = useState<string | null>(null);
   const [clubId, setClubId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState('Your Team');
   const [clubName, setClubName] = useState<string | null>(null);
@@ -51,13 +52,14 @@ export default function PotmSetupPage() {
       }
       const { data: assignment } = await supabase.from('team_coaches').select('team_id').eq('user_id', user.id).limit(1).maybeSingle<TeamCoachRow>();
       if (!assignment) return;
-      const { data: team } = await supabase.from('teams').select('name,club_id,clubs(name,badge_url,primary_colour)').eq('id', assignment.team_id).maybeSingle<TeamRow>();
+      const { data: team } = await supabase.from('teams').select('name,club_id,clubs(name,badge_url,primary_colour,secondary_colour)').eq('id', assignment.team_id).maybeSingle<TeamRow>();
       const club = firstRelation(team?.clubs);
       setClubId(team?.club_id ?? null);
       setTeamName(team?.name ?? 'Your Team');
       setClubName(club?.name ?? null);
       setBadgeUrl(club?.badge_url ?? null);
       setPrimaryColour(club?.primary_colour ?? '#00C851');
+      setSecondaryColour(club?.secondary_colour ?? null);
       if (team?.club_id) {
         const { data: settings } = await supabase.from('potm_settings').select('message_mode,club_message,coach_vote_enabled').eq('club_id', team.club_id).maybeSingle<ClubSettings>();
         setClubSettings(settings ?? null);
@@ -140,11 +142,12 @@ export default function PotmSetupPage() {
           <div>
             <p className="mb-3 text-xs uppercase tracking-[0.24em] text-white/30">Live card preview</p>
             <PotmCardPreview
-              playerName="Player Name"
+              playerName="Shift OS"
               teamName={teamName}
               opponent="Match Day"
               message={previewMessage}
               primaryColour={primaryColour}
+              secondaryColour={secondaryColour}
               badgeUrl={badgeUrl}
               clubName={clubName}
             />
