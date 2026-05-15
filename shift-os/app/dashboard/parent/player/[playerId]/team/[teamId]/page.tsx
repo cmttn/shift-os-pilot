@@ -329,6 +329,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
               {cardPoll?.social_card_url ? <img src={cardPoll.social_card_url} alt="" className="mt-4 w-full rounded-xl border border-white/10" /> : null}
               <div className="mt-4 flex flex-wrap gap-2">
                 {cardPoll?.social_card_url ? <a href={cardPoll.social_card_url} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">Download Card</a> : null}
+                <Link href={`/dashboard/parent/potm?player=${player.id}`} className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">View all awards</Link>
                 <a href={`https://wa.me/?text=${encodeURIComponent(`${player.full_name} is Player of the Match for ${team.team_name}!`)}`} className="rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white">Share on WhatsApp</a>
               </div>
             </section>
@@ -359,6 +360,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
               </div>
               <div className="flex flex-wrap gap-2">
                 {cardPoll?.social_card_url ? <a href={cardPoll.social_card_url} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">Download Card</a> : null}
+                <Link href={`/dashboard/parent/potm?player=${player.id}`} className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">View all awards</Link>
                 <a href={`https://wa.me/?text=${encodeURIComponent(`${player.full_name} is Player of the Match for ${team.team_name}!`)}`} className="rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white">Share on WhatsApp</a>
               </div>
             </div>
