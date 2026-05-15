@@ -7,11 +7,12 @@ import { createClient } from '@/lib/supabase/client';
 import {
   calculatePlaytime,
   formatMinutes,
+  getAllowedGoalkeeperCounts,
   getPitchPlaces,
+  validateGoalkeeperCount,
   type CalculationMode,
   type GameFormat,
   type GamePeriods,
-  type GoalkeeperRule,
   type Player,
   type PlaytimeResult
 } from '@/lib/tools/playtimeCalculator';
@@ -49,6 +50,11 @@ interface PlaytimePlayer extends Player {
   starts: boolean;
 }
 
+interface GameTimeRow {
+  id: string;
+  player_id: string;
+}
+
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -68,7 +74,7 @@ function sessionTitle(session: RawSession | null): string {
   return session.title ?? session.opponent ?? session.type;
 }
 
-function resultToWhatsApp(result: PlaytimeResult, players: PlaytimePlayer[], format: GameFormat, totalMinutes: number): string {
+function resultToWhatsApp(result: PlaytimeResult, players: PlaytimePlayer[], format: GameFormat, totalMinutes: number, fixtureName: string): string {
   const starters = result.allocations.filter((allocation) => allocation.starts).map((allocation) => allocation.player_name);
   const subs = result.allocations.filter((allocation) => !allocation.starts).map((allocation) => allocation.player_name);
   const schedule = result.substitution_order.map((event) => {
@@ -76,8 +82,10 @@ function resultToWhatsApp(result: PlaytimeResult, players: PlaytimePlayer[], for
     return `Min ${event.minute} - ${event.player_off_name} OFF - ${event.player_on_name} ON`;
   });
   return [
+    fixtureName,
     `Fair play time: ${result.fair_share_minutes} mins per player`,
     `${players.length} players - ${format} - ${totalMinutes} mins`,
+    result.goalkeeper_rule_applied,
     '',
     'Starting lineup:',
     ...(starters.length > 0 ? starters : ['Time only - no starting lineup selected']),
@@ -105,11 +113,13 @@ export default function PlaytimeCalculatorPage() {
   const [totalMinutes, setTotalMinutes] = useState(40);
   const [format, setFormat] = useState<GameFormat>('5v5');
   const [periods, setPeriods] = useState<GamePeriods>(2);
-  const [goalkeeperRule, setGoalkeeperRule] = useState<GoalkeeperRule>('option_a');
   const [mode, setMode] = useState<CalculationMode>(1);
-  const [gkSlots, setGkSlots] = useState<Array<string | null>>([null, null]);
   const [allowShortSquad, setAllowShortSquad] = useState(false);
   const [result, setResult] = useState<PlaytimeResult | null>(null);
+  const [officialSaved, setOfficialSaved] = useState(false);
+  const [officialSaving, setOfficialSaving] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -152,45 +162,68 @@ export default function PlaytimeCalculatorPage() {
     void loadData();
   }, [sessionId]);
 
-  useEffect(() => {
-    setGkSlots((current) => Array.from({ length: periods }, (_, index) => current[index] ?? null));
-  }, [periods]);
-
   const selectedPlayers = useMemo(() => {
-    const periodMap = new Map<string, number[]>();
-    gkSlots.forEach((playerId, index) => {
-      if (!playerId) return;
-      periodMap.set(playerId, [...(periodMap.get(playerId) ?? []), index + 1]);
-    });
     return players.filter((player) => player.included).map((player): Player => ({
       id: player.id,
       first_name: player.first_name,
       last_name: player.last_name,
       full_name: player.full_name,
-      is_goalkeeper: periodMap.has(player.id),
-      goalkeeper_periods: periodMap.get(player.id) ?? []
+      is_goalkeeper: player.is_goalkeeper,
+      goalkeeper_periods: []
     }));
-  }, [gkSlots, players]);
+  }, [players]);
 
   const keepers = selectedPlayers.filter((player) => player.is_goalkeeper);
-  const effectiveRule: GoalkeeperRule = format === '3v3' || keepers.length === 0 ? 'none' : keepers.length === 1 ? 'full_game' : goalkeeperRule;
-  const starters = players.filter((player) => player.included && player.starts).map((player) => player.id);
+  const fullTimeKeeper = format !== '3v3' && keepers.length === 1 ? keepers[0] : null;
+  const goalkeeperValidation = format === '3v3' ? null : validateGoalkeeperCount(keepers.length, periods);
+  const effectiveRule = format === '3v3' || keepers.length === 0 ? 'none' : keepers.length === 1 ? 'full_game' : 'option_b';
+  const starters = players
+    .filter((player) => player.included && (player.starts || player.id === fullTimeKeeper?.id))
+    .map((player) => player.id);
   const preview = selectedPlayers.length > 0 ? calculatePlaytime({ total_minutes: totalMinutes, format, periods, players: selectedPlayers, goalkeeper_rule: effectiveRule, calculation_mode: mode, starters }) : null;
   const shortSquad = selectedPlayers.length > 0 && selectedPlayers.length < getPitchPlaces(format);
-  const canCalculate = selectedPlayers.length > 0 && totalMinutes > 0 && (!shortSquad || allowShortSquad);
+  const outfieldStarterSlots = Math.max(0, getPitchPlaces(format) - (fullTimeKeeper ? 1 : 0));
+  const selectedOutfieldStarterCount = players.filter((player) => player.included && player.starts && player.id !== fullTimeKeeper?.id).length;
+  const canCalculate = selectedPlayers.length > 0 && totalMinutes > 0 && !goalkeeperValidation && (!shortSquad || allowShortSquad);
+
+  useEffect(() => {
+    if (!timerRunning) return undefined;
+    const interval = window.setInterval(() => setTimerSeconds((current) => current + 1), 1000);
+    return () => window.clearInterval(interval);
+  }, [timerRunning]);
 
   function toggleIncluded(playerId: string) {
-    setPlayers((current) => current.map((player) => player.id === playerId ? { ...player, included: !player.included, starts: false } : player));
+    setPlayers((current) => current.map((player) => player.id === playerId ? { ...player, included: !player.included, starts: false, is_goalkeeper: false } : player));
   }
 
   function toggleStarter(playerId: string) {
-    setPlayers((current) => current.map((player) => player.id === playerId ? { ...player, starts: !player.starts } : player));
+    if (playerId === fullTimeKeeper?.id) return;
+    setPlayers((current) => current.map((player) => {
+      if (player.id !== playerId) return player;
+      if (!player.starts && selectedOutfieldStarterCount >= outfieldStarterSlots) return player;
+      return { ...player, starts: !player.starts };
+    }));
+  }
+
+  function toggleGoalkeeper(playerId: string) {
+    const maxGoalkeepers = Math.max(...getAllowedGoalkeeperCounts(periods));
+    setPlayers((current) => {
+      const selectedGoalkeepers = current.filter((player) => player.included && player.is_goalkeeper).length;
+      return current.map((player) => {
+        if (player.id !== playerId || !player.included || format === '3v3') return player;
+        if (!player.is_goalkeeper && selectedGoalkeepers >= maxGoalkeepers) return player;
+        return { ...player, is_goalkeeper: !player.is_goalkeeper, starts: player.is_goalkeeper ? player.starts : true };
+      });
+    });
   }
 
   function calculate() {
     if (!canCalculate) return;
     setResult(calculatePlaytime({ total_minutes: totalMinutes, format, periods, players: selectedPlayers, goalkeeper_rule: effectiveRule, calculation_mode: mode, starters }));
     setSaved(false);
+    setOfficialSaved(false);
+    setTimerSeconds(0);
+    setTimerRunning(false);
   }
 
   async function saveResult() {
@@ -221,9 +254,49 @@ export default function PlaytimeCalculatorPage() {
 
   async function shareWhatsApp() {
     if (!result) return;
-    const message = resultToWhatsApp(result, players.filter((player) => player.included), format, totalMinutes);
+    const message = resultToWhatsApp(result, players.filter((player) => player.included), format, totalMinutes, sessionTitle(session));
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   }
+
+  async function markOfficial() {
+    if (!result) return;
+    setOfficialSaving(true);
+    setOfficialSaved(false);
+    setError('');
+    const supabase = createClient();
+    const playerIds = result.allocations.map((allocation) => allocation.player_id);
+    const { data: existingRows, error: existingError } = await supabase
+      .from('game_time')
+      .select('id,player_id')
+      .eq('session_id', sessionId)
+      .in('player_id', playerIds);
+    if (existingError) {
+      setOfficialSaving(false);
+      setError(existingError.message);
+      return;
+    }
+
+    const existing = (existingRows ?? []) as GameTimeRow[];
+    const now = new Date().toISOString();
+    await Promise.all(result.allocations.map(async (allocation) => {
+      const minutesPlayed = Math.round(allocation.total_minutes);
+      const row = existing.find((item) => item.player_id === allocation.player_id);
+      if (row) {
+        await supabase.from('game_time').update({ minutes_played: minutesPlayed, updated_at: now }).eq('id', row.id);
+        return;
+      }
+      await supabase.from('game_time').insert({
+        session_id: sessionId,
+        player_id: allocation.player_id,
+        minutes_played: minutesPlayed,
+        updated_at: now
+      });
+    }));
+    setOfficialSaving(false);
+    setOfficialSaved(true);
+  }
+
+  const nextSub = result?.substitution_order.find((event) => event.minute * 60 > timerSeconds) ?? null;
 
   return (
     <main className="min-h-screen px-5 pb-24 pt-8 text-white" style={{ backgroundColor: '#080a0f' }}>
@@ -244,13 +317,23 @@ export default function PlaytimeCalculatorPage() {
                 <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-black" style={{ backgroundColor: primaryColour }}>{initials(player.full_name)}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-white">{player.full_name}</span>
-                  {mode === 2 && player.included ? <button type="button" onClick={() => toggleStarter(player.id)} className="mt-1 rounded-full border border-white/10 px-3 py-1 text-xs text-white/55">{player.starts ? 'Starting' : 'Sub'}</button> : null}
+                  <span className="mt-1 flex flex-wrap gap-2">
+                    {format !== '3v3' && player.included ? (
+                      <button type="button" onClick={() => toggleGoalkeeper(player.id)} className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold" style={{ backgroundColor: player.is_goalkeeper ? `${primaryColour}24` : 'rgba(255,255,255,0.03)', color: player.is_goalkeeper ? primaryColour : 'rgba(255,255,255,0.45)' }}>
+                        GK
+                      </button>
+                    ) : null}
+                    {mode === 2 && player.included ? <button type="button" disabled={player.id === fullTimeKeeper?.id} onClick={() => toggleStarter(player.id)} className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/55 disabled:opacity-70">{player.id === fullTimeKeeper?.id ? 'Starting GK' : player.starts ? 'Starting' : 'Sub'}</button> : null}
+                  </span>
                 </span>
                 <button type="button" onClick={() => toggleIncluded(player.id)} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: player.included ? `${primaryColour}24` : 'rgba(255,255,255,0.06)', color: player.included ? primaryColour : 'rgba(255,255,255,0.45)' }}>{player.included ? 'Included' : 'Excluded'}</button>
               </article>
             ))}
           </div>
           <p className="mt-4 text-sm text-white/45">{selectedPlayers.length} players selected</p>
+          {fullTimeKeeper ? <p className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 text-sm text-white/50">{fullTimeKeeper.full_name} plays full game in goal - excluded from outfield rotation.</p> : null}
+          {mode === 2 && fullTimeKeeper ? <p className="mt-3 rounded-xl border p-3 text-sm" style={{ backgroundColor: `${primaryColour}14`, borderColor: `${primaryColour}33`, color: primaryColour }}>Goalkeeper locked as starter. Choose {outfieldStarterSlots} outfield starters.</p> : null}
+          {goalkeeperValidation ? <p className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-200">{goalkeeperValidation}</p> : null}
         </section>
 
         <section className="mt-4 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -274,33 +357,9 @@ export default function PlaytimeCalculatorPage() {
           <div className="mt-5 rounded-xl border p-4" style={{ backgroundColor: `${primaryColour}14`, borderColor: `${primaryColour}33` }}>
             <p className="text-sm text-white/70">{selectedPlayers.length} players · {totalMinutes} min game · {format} · {periods} periods</p>
             <p className="mt-1 text-lg font-bold" style={{ color: primaryColour }}>Fair play time: {preview ? `${preview.fair_share_minutes} mins each` : 'Select players'}</p>
+            {preview?.rotation_interval_minutes ? <p className="mt-1 text-sm text-white/45">Rotation interval: every {formatMinutes(preview.rotation_interval_minutes)}</p> : null}
           </div>
         </section>
-
-        {format !== '3v3' ? (
-          <section className="mt-4 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-            <h2 className="text-xl font-bold text-white">Goalkeepers</h2>
-            <p className="mt-1 text-sm text-white/40">Select players taking turns in goal this match.</p>
-            <div className="mt-4 space-y-3">
-              {gkSlots.map((playerId, index) => (
-                <label key={index} className="block">
-                  <span className="text-xs uppercase tracking-wider text-white/35">Period {index + 1} Goalkeeper</span>
-                  <select value={playerId ?? ''} onChange={(event) => setGkSlots((current) => current.map((value, slot) => slot === index ? event.target.value || null : value))} className="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#0d1117] p-3 text-white">
-                    <option value="">No goalkeeper</option>
-                    {selectedPlayers.map((player) => <option key={player.id} value={player.id}>{player.full_name}</option>)}
-                  </select>
-                </label>
-              ))}
-            </div>
-            {keepers.length > 1 ? (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                <button type="button" onClick={() => setGoalkeeperRule('option_a')} className="rounded-xl border p-4 text-left text-sm" style={{ borderColor: goalkeeperRule === 'option_a' ? primaryColour : 'rgba(255,255,255,0.08)', backgroundColor: goalkeeperRule === 'option_a' ? `${primaryColour}14` : 'rgba(255,255,255,0.03)' }}><strong className="block text-white">Keepers play full game</strong><span className="text-white/40">Recommended for simpler touchline rotation.</span></button>
-                <button type="button" onClick={() => setGoalkeeperRule('option_b')} className="rounded-xl border p-4 text-left text-sm" style={{ borderColor: goalkeeperRule === 'option_b' ? primaryColour : 'rgba(255,255,255,0.08)', backgroundColor: goalkeeperRule === 'option_b' ? `${primaryColour}14` : 'rgba(255,255,255,0.03)' }}><strong className="block text-white">Equal time for all</strong><span className="text-white/40">Keepers return outfield after goal stint.</span></button>
-              </div>
-            ) : null}
-            {preview ? <p className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 text-sm text-white/45">{preview.goalkeeper_rule_applied}</p> : null}
-          </section>
-        ) : null}
 
         <section className="mt-4 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <h2 className="text-xl font-bold text-white">Calculation Mode</h2>
@@ -347,12 +406,28 @@ export default function PlaytimeCalculatorPage() {
                 </div>
               </div>
             ) : null}
+            {result.substitution_order.length > 0 ? (
+              <div className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Game Day Timer</p>
+                <p className="mt-2 text-3xl font-black text-white">{Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')}</p>
+                <p className="mt-2 text-sm text-white/45">
+                  {nextSub ? `At ${nextSub.minute} mins: ${nextSub.reason === 'gk_swap' ? `${nextSub.player_off_name} GK -> ${nextSub.player_on_name} GK` : `${nextSub.player_off_name} OFF -> ${nextSub.player_on_name} ON`}` : 'No more substitutions scheduled.'}
+                </p>
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  <button type="button" onClick={() => setTimerRunning(true)} className="rounded-full bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white">Start</button>
+                  <button type="button" onClick={() => setTimerRunning(false)} className="rounded-full bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white">Pause</button>
+                  <button type="button" onClick={() => { if (nextSub) setTimerSeconds(Math.round(nextSub.minute * 60)); }} className="rounded-full bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white">Next Sub</button>
+                  <button type="button" onClick={() => { setTimerSeconds(0); setTimerRunning(false); }} className="rounded-full bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white">Reset</button>
+                </div>
+              </div>
+            ) : null}
             {result.warnings.map((warning) => <p key={warning} className="mt-3 rounded-xl border p-3 text-sm text-amber-300" style={{ backgroundColor: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.2)' }}>{warning}</p>)}
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <button type="button" onClick={saveResult} className="rounded-full px-4 py-3 font-semibold text-black" style={{ backgroundColor: primaryColour }}>{saved ? 'Saved' : 'Save'}</button>
               <button type="button" onClick={shareWhatsApp} className="rounded-full bg-[#25D366] px-4 py-3 font-semibold text-white">WhatsApp</button>
-              <button type="button" onClick={() => router.refresh()} className="rounded-full border border-white/10 px-4 py-3 font-semibold text-white">Recalculate</button>
+              <button type="button" onClick={markOfficial} disabled={officialSaving} className="rounded-full border border-white/10 px-4 py-3 font-semibold text-white disabled:opacity-50">{officialSaved ? 'Official minutes saved' : officialSaving ? 'Saving...' : 'Mark as official'}</button>
             </div>
+            <button type="button" onClick={() => router.refresh()} className="mt-3 w-full rounded-full border border-white/10 px-4 py-3 font-semibold text-white">Recalculate</button>
           </section>
         ) : null}
         {error ? <p className="mt-4 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}

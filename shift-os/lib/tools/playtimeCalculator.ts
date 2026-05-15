@@ -45,6 +45,7 @@ export interface PlayerTimeAllocation {
 
 export interface PlaytimeResult {
   fair_share_minutes: number;
+  rotation_interval_minutes: number | null;
   period_duration: number;
   pitch_places: number;
   squad_size: number;
@@ -87,6 +88,19 @@ function byName(a: Player, b: Player): number {
   return a.full_name.localeCompare(b.full_name);
 }
 
+export function getAllowedGoalkeeperCounts(periods: GamePeriods): number[] {
+  if (periods === 2) return [0, 1, 2];
+  if (periods === 3) return [0, 1, 3];
+  return [0, 1, 2, 4];
+}
+
+export function validateGoalkeeperCount(goalkeeperCount: number, periods: GamePeriods): string | null {
+  if (getAllowedGoalkeeperCounts(periods).includes(goalkeeperCount)) return null;
+  if (periods === 2) return 'Halves allow 1 or 2 goalkeepers.';
+  if (periods === 3) return 'Thirds allow 1 or 3 goalkeepers.';
+  return 'Quarters allow 1, 2 or 4 goalkeepers.';
+}
+
 function assignGoalkeeperPeriods(keepers: Player[], periods: GamePeriods, warnings: string[]): Player[] {
   if (keepers.length === 0) return [];
   const assigned = keepers.map((keeper) => ({ ...keeper, goalkeeper_periods: [] as number[] }));
@@ -94,41 +108,98 @@ function assignGoalkeeperPeriods(keepers: Player[], periods: GamePeriods, warnin
     const keeper = assigned[(period - 1) % assigned.length];
     keeper.goalkeeper_periods.push(period);
   }
-  if (keepers.length > 1 && keepers.length !== periods) {
-    const first = assigned[0];
-    const extra = first.goalkeeper_periods.slice(1).join(' and ');
-    warnings.push(`You have ${keepers.length} keepers but ${periods} periods. ${first.full_name} will cover periods 1${extra ? ` and ${extra}` : ''}.`);
-  }
   return assigned;
 }
 
-function buildStartingIds(input: PlaytimeInput, pitchPlaces: number, keepers: Player[], outfieldPlayers: Player[]): string[] {
+function buildStartingIds(input: PlaytimeInput, activePlaces: number, lockedKeeper: Player | null, rotationPlayers: Player[]): string[] {
+  const startingIds: string[] = [];
+  if (lockedKeeper) startingIds.push(lockedKeeper.id);
+  const remainingSlots = Math.max(0, activePlaces - startingIds.length);
   if (input.calculation_mode === 2 && input.starters && input.starters.length > 0) {
-    return input.starters.slice(0, pitchPlaces);
+    const pickedRotationStarters = input.starters
+      .filter((id) => rotationPlayers.some((player) => player.id === id))
+      .filter((id) => id !== lockedKeeper?.id)
+      .slice(0, remainingSlots);
+    startingIds.push(...pickedRotationStarters);
+    const missingSlots = Math.max(0, activePlaces - startingIds.length);
+    startingIds.push(...rotationPlayers.filter((player) => !startingIds.includes(player.id)).sort(byName).slice(0, missingSlots).map((player) => player.id));
+    return startingIds;
   }
   if (input.calculation_mode !== 3) return [];
-  const startingIds: string[] = [];
-  if (keepers.length > 0) startingIds.push(keepers[0].id);
-  const outfieldSlots = Math.max(0, pitchPlaces - startingIds.length);
-  startingIds.push(...outfieldPlayers.slice().sort(byName).slice(0, outfieldSlots).map((player) => player.id));
+  startingIds.push(...rotationPlayers.slice().sort(byName).slice(0, remainingSlots).map((player) => player.id));
   return startingIds;
 }
 
-function buildRotationEvents(players: Player[], startingIds: string[], fairShare: number): SubstitutionEvent[] {
-  if (startingIds.length === 0) return [];
-  const starters = startingIds.map((id) => players.find((player) => player.id === id)).filter((player): player is Player => Boolean(player));
-  const subs = players.filter((player) => !startingIds.includes(player.id)).sort(byName);
-  return subs.map((sub, index) => {
-    const playerOff = starters[index % starters.length];
-    return {
-      minute: roundToTwo(fairShare),
-      player_off_id: playerOff.id,
-      player_off_name: playerOff.full_name,
-      player_on_id: sub.id,
-      player_on_name: sub.full_name,
-      reason: 'rotation'
-    };
-  });
+interface RotationPlan {
+  minutesByPlayerId: Map<string, number>;
+  events: SubstitutionEvent[];
+  startingIds: string[];
+  interval: number | null;
+}
+
+function buildRestingIds(orderedPlayers: Player[], activePlaces: number, blockIndex: number): Set<string> {
+  const benchCount = Math.max(0, orderedPlayers.length - activePlaces);
+  const restingIds = new Set<string>();
+  if (benchCount === 0) return restingIds;
+  const startIndex = blockIndex === 0 ? activePlaces : ((blockIndex - 1) * benchCount) % orderedPlayers.length;
+  for (let offset = 0; offset < benchCount; offset += 1) {
+    restingIds.add(orderedPlayers[(startIndex + offset) % orderedPlayers.length].id);
+  }
+  return restingIds;
+}
+
+function buildRotationPlan(players: Player[], activePlaces: number, totalMinutes: number, preferredStartingIds: string[]): RotationPlan {
+  const minutesByPlayerId = new Map(players.map((player) => [player.id, 0]));
+  if (players.length === 0 || activePlaces <= 0) return { minutesByPlayerId, events: [], startingIds: [], interval: null };
+  if (players.length <= activePlaces) {
+    players.forEach((player) => minutesByPlayerId.set(player.id, totalMinutes));
+    return { minutesByPlayerId, events: [], startingIds: players.map((player) => player.id), interval: null };
+  }
+
+  const preferredStarters = preferredStartingIds
+    .map((id) => players.find((player) => player.id === id))
+    .filter((player): player is Player => Boolean(player))
+    .slice(0, activePlaces);
+  const orderedPlayers = [
+    ...preferredStarters,
+    ...players.filter((player) => !preferredStarters.some((starter) => starter.id === player.id)).sort(byName)
+  ];
+  const blockCount = players.length;
+  const blockDuration = totalMinutes / blockCount;
+  const events: SubstitutionEvent[] = [];
+  let currentPlaying = orderedPlayers.filter((player) => !buildRestingIds(orderedPlayers, activePlaces, 0).has(player.id));
+
+  for (let block = 0; block < blockCount; block += 1) {
+    currentPlaying.forEach((player) => {
+      minutesByPlayerId.set(player.id, roundToTwo((minutesByPlayerId.get(player.id) ?? 0) + blockDuration));
+    });
+    if (block === blockCount - 1) continue;
+    const nextRestingIds = buildRestingIds(orderedPlayers, activePlaces, block + 1);
+    const nextPlaying = orderedPlayers.filter((player) => !nextRestingIds.has(player.id));
+    const playersOff = currentPlaying.filter((player) => !nextPlaying.some((next) => next.id === player.id));
+    const playersOn = nextPlaying.filter((player) => !currentPlaying.some((current) => current.id === player.id));
+    const minute = roundToTwo(blockDuration * (block + 1));
+    playersOn.forEach((playerOn, index) => {
+      const playerOff = playersOff[index];
+      if (!playerOff) return;
+      events.push({
+        minute,
+        player_off_id: playerOff.id,
+        player_off_name: playerOff.full_name,
+        player_on_id: playerOn.id,
+        player_on_name: playerOn.full_name,
+        reason: 'rotation'
+      });
+    });
+    currentPlaying = nextPlaying;
+  }
+
+  return {
+    minutesByPlayerId,
+    events,
+    startingIds: orderedPlayers.filter((player) => !buildRestingIds(orderedPlayers, activePlaces, 0).has(player.id)).map((player) => player.id),
+    interval: roundToTwo(blockDuration)
+  };
 }
 
 function buildGoalkeeperEvents(keepers: Player[], periodDuration: number, rule: GoalkeeperRule): SubstitutionEvent[] {
@@ -168,6 +239,8 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
   const baseFairShare = squadSize > 0 ? roundToTwo((input.total_minutes * pitchPlaces) / squadSize) : 0;
   const warnings: string[] = [];
   const rawKeepers = input.format === '3v3' ? [] : input.players.filter((player) => player.is_goalkeeper);
+  const goalkeeperValidation = validateGoalkeeperCount(rawKeepers.length, input.periods);
+  if (goalkeeperValidation) warnings.push(goalkeeperValidation);
   const assignedKeepers = assignGoalkeeperPeriods(rawKeepers, input.periods, warnings);
   const keeperIds = new Set(assignedKeepers.map((player) => player.id));
   const outfieldPlayers = input.players.filter((player) => !keeperIds.has(player.id));
@@ -180,6 +253,7 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
   if (squadSize === 0) {
     return {
       fair_share_minutes: 0,
+      rotation_interval_minutes: null,
       period_duration: periodDuration,
       pitch_places: pitchPlaces,
       squad_size: 0,
@@ -192,6 +266,17 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
     };
   }
 
+  const singleFullTimeKeeper = goalkeeperCount === 1 && input.format !== '3v3';
+  const usesOutfieldOnlyRotation = singleFullTimeKeeper || (goalkeeperCount > 1 && rule === 'option_a');
+  const rotationPool = usesOutfieldOnlyRotation ? outfieldPlayers : input.players;
+  const activeRotationPlaces = usesOutfieldOnlyRotation ? outfieldPlaces : pitchPlaces;
+  const lockedKeeper = singleFullTimeKeeper ? assignedKeepers[0] : null;
+  const preferredStartingIds = buildStartingIds(input, pitchPlaces, lockedKeeper, rotationPool);
+  const rotationPlan = input.calculation_mode === 1
+    ? buildRotationPlan(rotationPool, activeRotationPlaces, input.total_minutes, rotationPool.slice().sort(byName).slice(0, activeRotationPlaces).map((player) => player.id))
+    : buildRotationPlan(rotationPool, activeRotationPlaces, input.total_minutes, preferredStartingIds.filter((id) => id !== lockedKeeper?.id));
+  const rotationMinutes = rotationPlan.minutesByPlayerId;
+
   if (goalkeeperCount === 0 || input.format === '3v3') {
     rule = 'none';
     fairShare = baseFairShare;
@@ -201,9 +286,9 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
         player_name: player.full_name,
         is_goalkeeper: false,
         goalkeeper_periods: [],
-        total_minutes: fairShare,
+        total_minutes: roundToTwo(rotationMinutes.get(player.id) ?? fairShare),
         goal_minutes: 0,
-        outfield_minutes: fairShare,
+        outfield_minutes: roundToTwo(rotationMinutes.get(player.id) ?? fairShare),
         starts: false,
         sub_position: null
       });
@@ -231,9 +316,9 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
         player_name: player.full_name,
         is_goalkeeper: false,
         goalkeeper_periods: [],
-        total_minutes: outfieldFairShare,
+        total_minutes: roundToTwo(rotationMinutes.get(player.id) ?? outfieldFairShare),
         goal_minutes: 0,
-        outfield_minutes: outfieldFairShare,
+        outfield_minutes: roundToTwo(rotationMinutes.get(player.id) ?? outfieldFairShare),
         starts: false,
         sub_position: null
       });
@@ -249,9 +334,9 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
         player_name: keeper.full_name,
         is_goalkeeper: true,
         goalkeeper_periods: keeper.goalkeeper_periods,
-        total_minutes: input.total_minutes,
+        total_minutes: roundToTwo(rotationMinutes.get(keeper.id) ?? input.total_minutes),
         goal_minutes: goalMinutes,
-        outfield_minutes: roundToTwo(input.total_minutes - goalMinutes),
+        outfield_minutes: Math.max(0, roundToTwo((rotationMinutes.get(keeper.id) ?? input.total_minutes) - goalMinutes)),
         starts: false,
         sub_position: null
       });
@@ -262,9 +347,9 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
         player_name: player.full_name,
         is_goalkeeper: false,
         goalkeeper_periods: [],
-        total_minutes: outfieldFairShare,
+        total_minutes: roundToTwo(rotationMinutes.get(player.id) ?? outfieldFairShare),
         goal_minutes: 0,
-        outfield_minutes: outfieldFairShare,
+        outfield_minutes: roundToTwo(rotationMinutes.get(player.id) ?? outfieldFairShare),
         starts: false,
         sub_position: null
       });
@@ -275,14 +360,15 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
     goalkeeperRuleApplied = 'Equal time for all - keepers return as outfield after goal stint';
     assignedKeepers.forEach((keeper) => {
       const goalMinutes = roundToTwo(periodDuration * keeper.goalkeeper_periods.length);
-      const outfieldMinutes = roundToTwo(fairShare - goalMinutes);
+      const totalPlayerMinutes = roundToTwo(rotationMinutes.get(keeper.id) ?? fairShare);
+      const outfieldMinutes = roundToTwo(totalPlayerMinutes - goalMinutes);
       if (outfieldMinutes < 0) warnings.push(`${keeper.full_name}'s goal stint is longer than their fair share.`);
       allocations.push({
         player_id: keeper.id,
         player_name: keeper.full_name,
         is_goalkeeper: true,
         goalkeeper_periods: keeper.goalkeeper_periods,
-        total_minutes: fairShare,
+        total_minutes: totalPlayerMinutes,
         goal_minutes: goalMinutes,
         outfield_minutes: Math.max(0, outfieldMinutes),
         starts: false,
@@ -295,17 +381,16 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
         player_name: player.full_name,
         is_goalkeeper: false,
         goalkeeper_periods: [],
-        total_minutes: fairShare,
+        total_minutes: roundToTwo(rotationMinutes.get(player.id) ?? fairShare),
         goal_minutes: 0,
-        outfield_minutes: fairShare,
+        outfield_minutes: roundToTwo(rotationMinutes.get(player.id) ?? fairShare),
         starts: false,
         sub_position: null
       });
     });
   }
 
-  const rotationPool = rule === 'full_game' || rule === 'option_a' ? outfieldPlayers : input.players;
-  const startingIds = buildStartingIds(input, pitchPlaces, assignedKeepers, outfieldPlayers);
+  const startingIds = input.calculation_mode === 1 ? (lockedKeeper ? [lockedKeeper.id] : []) : [...(lockedKeeper ? [lockedKeeper.id] : []), ...rotationPlan.startingIds];
   const subIds = rotationPool.filter((player) => !startingIds.includes(player.id)).sort(byName).map((player) => player.id);
   const allocationWithStarts = allocations.map((allocation) => ({
     ...allocation,
@@ -314,16 +399,17 @@ export function calculatePlaytime(input: PlaytimeInput): PlaytimeResult {
   }));
   const substitutionOrder = [
     ...buildGoalkeeperEvents(assignedKeepers, periodDuration, rule),
-    ...(input.calculation_mode === 1 ? [] : buildRotationEvents(rotationPool, startingIds, fairShare))
+    ...(input.calculation_mode === 1 ? [] : rotationPlan.events)
   ].sort((a, b) => a.minute - b.minute);
   const outfieldTotal = allocationWithStarts.reduce((sum, allocation) => sum + allocation.outfield_minutes, 0);
-  const expectedOutfield = input.total_minutes * outfieldPlaces;
+  const expectedOutfield = input.total_minutes * (goalkeeperCount > 0 && input.format !== '3v3' ? outfieldPlaces : pitchPlaces);
   if (Math.abs(outfieldTotal - expectedOutfield) > 0.1) {
     warnings.push(`Outfield minutes total ${roundToTwo(outfieldTotal)} does not match expected ${roundToTwo(expectedOutfield)}.`);
   }
 
   return {
     fair_share_minutes: fairShare,
+    rotation_interval_minutes: rotationPlan.interval,
     period_duration: periodDuration,
     pitch_places: pitchPlaces,
     squad_size: squadSize,
