@@ -14,6 +14,16 @@ export default async function CoachPlayersPage() {
     if (player.invite_status === 'sent') return { label: 'Invite sent', colour: '#f59e0b' };
     return { label: 'Not yet invited', colour: 'rgba(255,255,255,0.35)' };
   };
+  const getMedicalStatus = (player: typeof data.players[number]): { label: string; className: string } => {
+    if (player.medical_no_known) return { label: 'Medical: No known', className: 'bg-emerald-500/10 text-emerald-300' };
+    if (player.medical_notes?.trim()) return { label: 'Medical: Yes', className: 'bg-amber-500/10 text-amber-300' };
+    return { label: 'Medical: Pending', className: 'bg-white/[0.06] text-white/35' };
+  };
+  const getSocialStatus = (player: typeof data.players[number]): { label: string; className: string } => {
+    if (player.social_media_consent === true) return { label: 'Consent given', className: 'bg-emerald-500/10 text-emerald-300' };
+    if (player.social_media_consent === false) return { label: 'No consent', className: 'bg-red-500/10 text-red-200' };
+    return { label: 'Consent pending', className: 'bg-white/[0.06] text-white/35' };
+  };
 
   return (
     <main className="min-h-screen px-5 pb-28 pt-8 text-white md:ml-[260px]" style={{ backgroundColor: '#080a0f' }}>
@@ -34,6 +44,10 @@ export default async function CoachPlayersPage() {
                   <p className="mt-1 text-xs text-white/35">{data.teams.find((team) => team.id === player.team_id)?.name ?? 'Team'}</p>
                 </div>
                 <span className="mt-1 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: getStatus(player).colour }} title={getStatus(player).label} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <span className={`rounded-full px-2 py-0.5 text-xs ${getMedicalStatus(player).className}`}>{getMedicalStatus(player).label}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs ${getSocialStatus(player).className}`}>{getSocialStatus(player).label}</span>
               </div>
               <PlayerInviteButton
                 playerId={player.id}

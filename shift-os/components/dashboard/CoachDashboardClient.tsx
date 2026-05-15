@@ -97,6 +97,26 @@ function getFanBadge(player: CoachDashboardData['players'][number]): { label: st
   };
 }
 
+function getMedicalBadge(player: CoachDashboardData['players'][number]): { label: string; className: string } {
+  if (player.medical_no_known) {
+    return { label: 'Medical: No known', className: 'bg-emerald-500/10 text-emerald-300' };
+  }
+  if (player.medical_notes?.trim()) {
+    return { label: 'Medical: Yes', className: 'bg-amber-500/10 text-amber-300' };
+  }
+  return { label: 'Medical: Pending', className: 'bg-white/[0.06] text-white/35' };
+}
+
+function getSocialBadge(player: CoachDashboardData['players'][number]): { label: string; className: string } {
+  if (player.social_media_consent === true) {
+    return { label: 'Consent given', className: 'bg-emerald-500/10 text-emerald-300' };
+  }
+  if (player.social_media_consent === false) {
+    return { label: 'No consent', className: 'bg-red-500/10 text-red-200' };
+  }
+  return { label: 'Consent pending', className: 'bg-white/[0.06] text-white/35' };
+}
+
 export default function CoachDashboardClient({ data, initialActiveTeamId }: CoachDashboardClientProps) {
   const router = useRouter();
   const validInitialTeamId = initialActiveTeamId && data.teams.some((team) => team.id === initialActiveTeamId) ? initialActiveTeamId : data.activeTeamId;
@@ -363,7 +383,11 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
                     </div>
                     <h2 className="mt-2 text-sm font-semibold text-white">{player.full_name}</h2>
                     {player.dob ? <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}{calculateAge(player.dob) ? ` / ${calculateAge(player.dob)}` : ''}</p> : null}
-                    <span className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-xs ${getFanBadge(player).className}`} title={getFanBadge(player).title}>{getFanBadge(player).label}</span>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getFanBadge(player).className}`} title={getFanBadge(player).title}>{getFanBadge(player).label}</span>
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getMedicalBadge(player).className}`}>{getMedicalBadge(player).label}</span>
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getSocialBadge(player).className}`}>{getSocialBadge(player).label}</span>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -420,7 +444,11 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
                     </div>
                     <h2 className="mt-2 text-sm font-semibold text-white">{player.full_name}</h2>
                     {player.dob ? <p className="mt-1 text-xs text-white/35">{formatDate(player.dob)}</p> : null}
-                    <span className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-xs ${getFanBadge(player).className}`} title={getFanBadge(player).title}>{getFanBadge(player).label}</span>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getFanBadge(player).className}`} title={getFanBadge(player).title}>{getFanBadge(player).label}</span>
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getMedicalBadge(player).className}`}>{getMedicalBadge(player).label}</span>
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${getSocialBadge(player).className}`}>{getSocialBadge(player).label}</span>
+                    </div>
                   </article>
                 ))}
               </div>

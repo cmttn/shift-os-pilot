@@ -47,6 +47,9 @@ export interface ParentPlayer {
   invite_token: string | null;
   fa_fan_number: string | null;
   fa_fan_verified: boolean;
+  medical_notes: string | null;
+  medical_no_known: boolean;
+  social_media_consent: boolean | null;
   access: {
     parents: Array<{ id: string; name: string; detail: string }>;
     familyMembers: Array<{ id: string; name: string; detail: string; status: string }>;
@@ -83,6 +86,9 @@ interface RawPlayer {
   invite_token: string | null;
   fa_fan_number: string | null;
   fa_fan_verified: boolean | null;
+  medical_notes: string | null;
+  medical_no_known: boolean | null;
+  social_media_consent: boolean | null;
 }
 
 interface AccessProfile {
@@ -211,7 +217,7 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
   const userId = session.user.id;
   const [profileRes, playersRes] = await Promise.all([
     supabase.from('users_profile').select('full_name').eq('id', userId).single(),
-    supabase.from('players').select('id,team_id,parent_user_id,co_parent_user_id,first_name,last_name,dob,is_active,invite_token,fa_fan_number,fa_fan_verified').or(`parent_user_id.eq.${session.user.id},co_parent_user_id.eq.${session.user.id}`).eq('is_active', true).order('first_name', { ascending: true })
+    supabase.from('players').select('id,team_id,parent_user_id,co_parent_user_id,first_name,last_name,dob,is_active,invite_token,fa_fan_number,fa_fan_verified,medical_notes,medical_no_known,social_media_consent').or(`parent_user_id.eq.${session.user.id},co_parent_user_id.eq.${session.user.id}`).eq('is_active', true).order('first_name', { ascending: true })
   ]);
 
   const playerRows = (playersRes.data ?? []) as RawPlayer[];
@@ -318,6 +324,9 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
       invite_token: player.invite_token,
       fa_fan_number: player.fa_fan_number,
       fa_fan_verified: player.fa_fan_verified ?? false,
+      medical_notes: player.medical_notes ?? null,
+      medical_no_known: player.medical_no_known ?? false,
+      social_media_consent: player.social_media_consent,
       access: {
         parents,
         familyMembers: activeFamily,

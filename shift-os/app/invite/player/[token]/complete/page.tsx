@@ -19,6 +19,10 @@ interface InvitePlayerRow {
   dob: string | null;
   fa_fan_number: string | null;
   fa_fan_added_by: string | null;
+  medical_notes: string | null;
+  medical_no_known: boolean | null;
+  social_media_consent: boolean | null;
+  additional_notes: string | null;
   teams?: {
     name: string | null;
     clubs?: {
@@ -76,6 +80,10 @@ export default function PlayerInviteCompletePage({ params }: PlayerCompletePageP
   const [dob, setDob] = useState('');
   const [fanNumber, setFanNumber] = useState('');
   const [initialFanNumber, setInitialFanNumber] = useState('');
+  const [medicalNotes, setMedicalNotes] = useState('');
+  const [medicalNoKnown, setMedicalNoKnown] = useState(false);
+  const [socialMediaConsent, setSocialMediaConsent] = useState<'yes' | 'no' | ''>('');
+  const [additionalNotes, setAdditionalNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -94,7 +102,7 @@ export default function PlayerInviteCompletePage({ params }: PlayerCompletePageP
 
       const { data, error: loadError } = await supabase
         .from('players')
-        .select('id,parent_user_id,first_name,last_name,dob,fa_fan_number,fa_fan_added_by,teams(name,clubs(name,badge_url,primary_colour))')
+        .select('id,parent_user_id,first_name,last_name,dob,fa_fan_number,fa_fan_added_by,medical_notes,medical_no_known,social_media_consent,additional_notes,teams(name,clubs(name,badge_url,primary_colour))')
         .eq('invite_token', params.token)
         .eq('parent_user_id', session.user.id)
         .maybeSingle<InvitePlayerRow>();
@@ -110,6 +118,10 @@ export default function PlayerInviteCompletePage({ params }: PlayerCompletePageP
       setDob(data.dob ?? '');
       setFanNumber(data.fa_fan_number ?? '');
       setInitialFanNumber(data.fa_fan_number ?? '');
+      setMedicalNotes(data.medical_notes ?? '');
+      setMedicalNoKnown(Boolean(data.medical_no_known));
+      setSocialMediaConsent(data.social_media_consent === true ? 'yes' : data.social_media_consent === false ? 'no' : '');
+      setAdditionalNotes(data.additional_notes ?? '');
       setLoading(false);
     }
 
@@ -123,15 +135,35 @@ export default function PlayerInviteCompletePage({ params }: PlayerCompletePageP
       setError('Date of birth is required.');
       return;
     }
+    if (!medicalNoKnown && !medicalNotes.trim()) {
+      setError('Please add medical information, or tick no known medical information to declare.');
+      return;
+    }
+    if (!socialMediaConsent) {
+      setError('Please choose a social media consent option.');
+      return;
+    }
 
     setSaving(true);
     setError('');
     const trimmedFan = fanNumber.trim();
+    const trimmedMedical = medicalNotes.trim();
+    const trimmedAdditional = additionalNotes.trim();
     const updatePayload: {
       dob: string;
       fa_fan_number?: string | null;
       fa_fan_added_by?: 'parent' | null;
-    } = { dob };
+      medical_notes: string | null;
+      medical_no_known: boolean;
+      social_media_consent: boolean;
+      additional_notes: string | null;
+    } = {
+      dob,
+      medical_notes: medicalNoKnown ? null : trimmedMedical,
+      medical_no_known: medicalNoKnown,
+      social_media_consent: socialMediaConsent === 'yes',
+      additional_notes: trimmedAdditional || null
+    };
 
     if (trimmedFan !== initialFanNumber) {
       updatePayload.fa_fan_number = trimmedFan || null;
@@ -226,6 +258,69 @@ export default function PlayerInviteCompletePage({ params }: PlayerCompletePageP
             </a>
             <p className="mt-3 text-center text-xs text-white/25">FAN numbers help verify your child is registered with The FA. You can skip this for now and add it later in settings.</p>
           </div>
+
+          <div className="my-5 h-px bg-white/[0.06]" />
+
+          <section>
+            <label className="block text-sm font-semibold text-white">Medical information</label>
+            <p className="mt-1 text-xs leading-relaxed text-white/40">Does your child have any pre-existing medical conditions, allergies, injuries or needs the club/coach should know about?</p>
+            <textarea
+              value={medicalNotes}
+              onChange={(event) => setMedicalNotes(event.target.value)}
+              disabled={medicalNoKnown}
+              rows={4}
+              className="mt-3 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-white/25 disabled:cursor-not-allowed disabled:opacity-45"
+              placeholder="Allergies, asthma, injuries, support needs, medication, or anything the coach should know."
+            />
+            <label className="mt-3 flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-sm text-white/70">
+              <input
+                type="checkbox"
+                checked={medicalNoKnown}
+                onChange={(event) => setMedicalNoKnown(event.target.checked)}
+                className="mt-1 h-4 w-4 accent-white"
+              />
+              <span>No known medical information to declare</span>
+            </label>
+          </section>
+
+          <section className="mt-5">
+            <label className="block text-sm font-semibold text-white">Social media consent</label>
+            <p className="mt-1 text-xs leading-relaxed text-white/40">Do you consent to your child appearing in club/team photos or videos shared on official club/team social media channels?</p>
+            <div className="mt-3 grid gap-2">
+              {[
+                { value: 'yes', label: 'Yes, I give consent' },
+                { value: 'no', label: 'No, I do not give consent' }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setSocialMediaConsent(option.value as 'yes' | 'no')}
+                  className="flex min-h-12 items-center justify-between rounded-xl border px-4 text-left text-sm font-medium transition"
+                  style={{
+                    borderColor: socialMediaConsent === option.value ? `${primaryColour}88` : 'rgba(255,255,255,0.08)',
+                    backgroundColor: socialMediaConsent === option.value ? `${primaryColour}18` : 'rgba(255,255,255,0.03)',
+                    color: '#ffffff'
+                  }}
+                >
+                  <span>{option.label}</span>
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full border border-white/30">
+                    {socialMediaConsent === option.value ? <span className="h-2 w-2 rounded-full" style={{ backgroundColor: primaryColour }} /> : null}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-5">
+            <label className="block text-sm font-semibold text-white">Anything else we should know?</label>
+            <textarea
+              value={additionalNotes}
+              onChange={(event) => setAdditionalNotes(event.target.value)}
+              rows={4}
+              className="mt-3 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-white/25"
+              placeholder="Transport notes, behaviour/support needs, family arrangements, preferred contact details, or anything else useful."
+            />
+          </section>
 
           {error ? <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">{error}</p> : null}
 

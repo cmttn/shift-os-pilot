@@ -122,6 +122,18 @@ function milestoneLabel(id: string): string {
   return MILESTONES.find((milestone) => milestone.id === id)?.label ?? id;
 }
 
+function medicalStatus(player: NonNullable<Awaited<ReturnType<typeof getParentDashboardData>>>['players'][number]): string {
+  if (player.medical_no_known) return 'Medical info: No known';
+  if (player.medical_notes?.trim()) return 'Medical info: Yes';
+  return 'Medical info: Pending';
+}
+
+function socialStatus(player: NonNullable<Awaited<ReturnType<typeof getParentDashboardData>>>['players'][number]): string {
+  if (player.social_media_consent === true) return 'Social media: Consent given';
+  if (player.social_media_consent === false) return 'Social media: No consent';
+  return 'Social media: Pending';
+}
+
 export default async function ParentPlayerTeamDashboardPage({ params }: ParentPlayerTeamDashboardPageProps) {
   const data = await getParentDashboardData();
   if (!data) redirect('/dashboard/player/welcome');
@@ -299,6 +311,8 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="rounded-full px-3 py-1 text-xs font-semibold text-black" style={{ backgroundColor: team.club_primary_colour }}>{team.age_group ?? 'Age TBC'}</span>
               <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{team.gender ?? 'Mixed'}</span>
+              <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{medicalStatus(player)}</span>
+              <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{socialStatus(player)}</span>
             </div>
           </section>
 
@@ -349,6 +363,15 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
           </section>
         ) : null}
         <div className="mx-auto mt-6 max-w-[900px]">
+          <section className="mb-5 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+            <h1 className="text-2xl font-black text-white">{player.full_name}</h1>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full px-3 py-1 text-xs font-semibold text-black" style={{ backgroundColor: team.club_primary_colour }}>{team.age_group ?? 'Age TBC'}</span>
+              <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{team.gender ?? 'Mixed'}</span>
+              <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{medicalStatus(player)}</span>
+              <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-white/55">{socialStatus(player)}</span>
+            </div>
+          </section>
           <PlayerAccessTree
             playerName={player.first_name || player.full_name}
             primaryParents={player.access.parents}

@@ -40,6 +40,9 @@ export interface CoachDashboardData {
     invite_status: string | null;
     fa_fan_number: string | null;
     fa_fan_verified: boolean;
+    medical_notes: string | null;
+    medical_no_known: boolean;
+    social_media_consent: boolean | null;
   }>;
   upcomingSessions: Array<{
     id: string;
@@ -121,6 +124,9 @@ interface RawPlayer {
   invite_status: string | null;
   fa_fan_number: string | null;
   fa_fan_verified: boolean | null;
+  medical_notes: string | null;
+  medical_no_known: boolean | null;
+  social_media_consent: boolean | null;
 }
 
 interface RawSession {
@@ -203,7 +209,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       .order('name', { ascending: true }),
     supabase
       .from('players')
-      .select('id,team_id,first_name,last_name,dob,is_active,parent_user_id,invite_token,invite_status,fa_fan_number,fa_fan_verified')
+      .select('id,team_id,first_name,last_name,dob,is_active,parent_user_id,invite_token,invite_status,fa_fan_number,fa_fan_verified,medical_notes,medical_no_known,social_media_consent')
       .in('team_id', teamIds)
       .order('first_name', { ascending: true }),
     supabase
@@ -261,7 +267,10 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       invite_token: player.invite_token ?? null,
       invite_status: player.invite_status ?? null,
       fa_fan_number: player.fa_fan_number ?? null,
-      fa_fan_verified: player.fa_fan_verified ?? false
+      fa_fan_verified: player.fa_fan_verified ?? false,
+      medical_notes: player.medical_notes ?? null,
+      medical_no_known: player.medical_no_known ?? false,
+      social_media_consent: player.social_media_consent
     };
   });
 
