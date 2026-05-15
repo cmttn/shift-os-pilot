@@ -35,9 +35,14 @@ export default function PotmCardPreview({ playerName, teamName, opponent, messag
       <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl" style={{ backgroundColor: `${primaryColour}66` }} />
       <div className="absolute -bottom-28 -left-24 h-80 w-80 rounded-full blur-3xl" style={{ backgroundColor: `${secondary}80` }} />
       <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(0,0,0,0.08),rgba(0,0,0,0.72))]" />
-      <div className="absolute inset-x-0 top-12 rotate-[-12deg] text-center text-[64px] font-black tracking-[0.28em] text-white/[0.018]">POTM POTM POTM</div>
       <div className="absolute inset-y-0 right-10 w-24 rotate-[18deg] bg-white/[0.07]" />
-      <svg className="absolute right-[-10%] top-[24%] h-[52%] w-[48%] text-white/[0.026]" viewBox="0 0 180 220" aria-hidden="true">
+      <svg className="absolute -left-[14%] bottom-[3%] h-[46%] w-[42%] text-white/[0.02]" viewBox="0 0 180 220" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M57 23h66v28h31c-1 29-14 49-38 58-5 14-14 24-26 29v24h34v18H56v-18h34v-24c-12-5-21-15-26-29-24-9-37-29-38-58h31V23Zm0 46H43c3 14 9 24 19 30-3-10-5-20-5-30Zm61 30c10-6 16-16 19-30h-14c0 10-2 20-5 30Z"
+        />
+      </svg>
+      <svg className="absolute right-[-10%] top-[19%] h-[50%] w-[46%] text-white/[0.024]" viewBox="0 0 180 220" aria-hidden="true">
         <path
           fill="currentColor"
           d="M57 23h66v28h31c-1 29-14 49-38 58-5 14-14 24-26 29v24h34v18H56v-18h34v-24c-12-5-21-15-26-29-24-9-37-29-38-58h31V23Zm0 46H43c3 14 9 24 19 30-3-10-5-20-5-30Zm61 30c10-6 16-16 19-30h-14c0 10-2 20-5 30Z"
@@ -45,9 +50,9 @@ export default function PotmCardPreview({ playerName, teamName, opponent, messag
       </svg>
 
       <div className="relative flex h-full flex-col p-5 sm:p-8">
-        <div className="relative h-[24%] min-h-[96px]">
+        <div className="flex h-[31%] min-h-[132px] flex-col items-center">
           <p className="whitespace-nowrap text-center text-[clamp(12px,3.5vw,24px)] font-black uppercase leading-none tracking-[0.13em] text-white sm:tracking-[0.22em]">Player of the Match</p>
-          <div className="absolute -left-1 top-7 flex h-24 w-24 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)] sm:h-36 sm:w-36">
+          <div className="mt-4 flex h-24 w-24 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)] sm:h-36 sm:w-36">
             {badgeUrl ? <img src={badgeUrl} alt="" className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center rounded-[24px] bg-white/15 text-3xl font-black text-white ring-1 ring-white/20 sm:rounded-[30px] sm:text-4xl">{initials(displayClub)}</div>}
           </div>
         </div>
@@ -65,9 +70,9 @@ export default function PotmCardPreview({ playerName, teamName, opponent, messag
           <p className="line-clamp-2 text-xs italic leading-relaxed text-white/86 sm:line-clamp-3 sm:text-sm">&ldquo;{displayMessage}&rdquo;</p>
         </div>
 
-        <div className="flex items-center justify-between gap-4 px-1 pb-1 pt-4 text-[8px] font-semibold uppercase tracking-[0.16em] text-white/32 sm:px-2 sm:pb-2 sm:text-[9px]">
-          <span className="truncate">{displayClub}</span>
-          <span className="shrink-0 text-white/24">Powered by SHIFT/OS</span>
+        <div className="flex items-end justify-between gap-4 px-2 pb-2 pt-4 text-[8px] font-semibold uppercase tracking-[0.16em] sm:px-3 sm:pb-3">
+          <span className="min-w-0 flex-1 pr-4 pb-2 text-[9px] tracking-[0.18em] text-white/38 sm:text-[10px]">{displayClub}</span>
+          <span className="shrink-0 text-[6px] text-white/20 sm:text-[7px]">Powered by SHIFT/OS</span>
         </div>
       </div>
     </article>
