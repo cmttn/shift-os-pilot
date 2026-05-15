@@ -49,30 +49,27 @@ export default function PotmCardPreview({ playerName, teamName, opponent, messag
         />
       </svg>
 
-      <div className="relative flex h-full flex-col p-4 sm:p-8">
-        <div className="flex flex-col items-center">
-          <p className="whitespace-nowrap text-center text-[clamp(12px,3.4vw,24px)] font-black uppercase leading-none tracking-[0.13em] text-white sm:tracking-[0.22em]">Player of the Match</p>
-          <div className="mt-1 flex h-28 w-28 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)] sm:mt-2 sm:h-44 sm:w-44">
-            {badgeUrl ? <img src={badgeUrl} alt="" className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center rounded-[24px] bg-white/15 text-3xl font-black text-white ring-1 ring-white/20 sm:rounded-[34px] sm:text-5xl">{initials(displayClub)}</div>}
-          </div>
+      <div className="absolute inset-4 sm:inset-8">
+        <p className="absolute left-0 right-0 top-[5%] whitespace-nowrap text-center text-[clamp(12px,3.25vw,24px)] font-black uppercase leading-none tracking-[0.13em] text-white sm:tracking-[0.22em]">Player of the Match</p>
+
+        <div className="absolute left-1/2 top-[10%] flex h-[24%] w-[24%] -translate-x-1/2 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)]">
+          {badgeUrl ? <img src={badgeUrl} alt="" className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center rounded-[24px] bg-white/15 text-3xl font-black text-white ring-1 ring-white/20 sm:rounded-[34px] sm:text-5xl">{initials(displayClub)}</div>}
         </div>
 
-        <div className="mt-1 flex flex-col items-center sm:mt-3">
-          <h3 className="text-center text-[clamp(34px,8.7vw,64px)] font-black leading-[0.9] tracking-[-0.02em] text-white drop-shadow-[0_8px_20px_rgba(0,0,0,0.35)] [overflow-wrap:anywhere]">{playerName}</h3>
-          <div className="mt-2 text-center sm:mt-3">
-            <p className="text-sm font-bold text-white/90 sm:text-base">{teamName}</p>
-            <p className="mt-0.5 text-xs text-white/60 sm:text-sm">vs {opponent}</p>
-          </div>
-          <p className="mx-auto mt-2 text-[8px] font-semibold uppercase tracking-[0.12em] text-white/50 sm:mt-3 sm:text-[10px]">Awarded by parents</p>
+        <div className="absolute left-0 right-0 top-[36%] flex flex-col items-center">
+          <h3 className="max-w-full text-center text-[clamp(29px,7.6vw,58px)] font-black leading-[0.88] tracking-[-0.02em] text-white drop-shadow-[0_8px_20px_rgba(0,0,0,0.35)] [overflow-wrap:anywhere]">{playerName}</h3>
+          <p className="mt-2 text-sm font-bold leading-none text-white/90 sm:mt-3 sm:text-base">{teamName}</p>
+          <p className="mt-1 text-xs leading-none text-white/60 sm:text-sm">vs {opponent}</p>
+          <p className="mt-3 text-[8px] font-semibold uppercase leading-none tracking-[0.12em] text-white/50 sm:text-[10px]">Awarded by parents</p>
         </div>
 
-        <div className="mt-2 rounded-2xl border border-white/[0.08] bg-black/[0.18] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur sm:mt-4 sm:p-4">
+        <div className="absolute left-0 right-0 top-[69%] rounded-2xl border border-white/[0.08] bg-black/[0.18] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur sm:p-4">
           <p className="line-clamp-2 text-xs italic leading-relaxed text-white/86 sm:line-clamp-3 sm:text-sm">&ldquo;{displayMessage}&rdquo;</p>
         </div>
 
-        <div className="relative mt-auto min-h-10 px-2 pb-2 pt-3 font-semibold uppercase sm:min-h-12 sm:px-3 sm:pb-3">
-          <span className="absolute bottom-5 left-2 right-2 whitespace-nowrap text-[7px] tracking-[0.05em] text-white/40 sm:bottom-6 sm:text-[9px] sm:tracking-[0.08em]">{displayClub}</span>
-          <span className="absolute bottom-1 right-2 text-[5px] tracking-[0.12em] text-white/20 sm:bottom-2 sm:right-3 sm:text-[7px]">Powered by SHIFT/OS</span>
+        <div className="absolute bottom-0 left-0 right-0 h-[14%] font-semibold uppercase">
+          <span className="absolute bottom-[48%] left-2 right-2 whitespace-nowrap text-[7px] tracking-[0.05em] text-white/40 sm:text-[9px] sm:tracking-[0.08em]">{displayClub}</span>
+          <span className="absolute bottom-[10%] right-2 text-[5px] tracking-[0.12em] text-white/20 sm:right-3 sm:text-[7px]">Powered by SHIFT/OS</span>
         </div>
       </div>
     </article>
