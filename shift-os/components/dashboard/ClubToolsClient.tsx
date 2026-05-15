@@ -40,7 +40,6 @@ function buildInitialToggleState(toggles: ClubToolToggle[]): Record<ToolFeatureK
     potm: true,
     fair_play_reports: false,
     structured_conversations: true,
-    recognition: true,
     availability_manager: true
   });
 }
@@ -66,7 +65,6 @@ export default function ClubToolsClient({ clubId, clubName, primaryColour, initi
       potm: [],
       fair_play_reports: [],
       structured_conversations: [],
-      recognition: [],
       availability_manager: []
     });
   }, [requests]);

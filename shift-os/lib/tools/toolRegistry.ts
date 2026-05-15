@@ -3,7 +3,6 @@ export type ToolFeatureKey =
   | 'potm'
   | 'fair_play_reports'
   | 'structured_conversations'
-  | 'recognition'
   | 'availability_manager';
 
 export interface ToolDefinition {
@@ -37,7 +36,7 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
     key: 'fair_play_reports',
     name: 'Fair Play Time',
     description: 'Plan game time fairly and reduce pressure around substitutions.',
-    coachPath: '/dashboard/coach/sessions',
+    coachPath: '/dashboard/coach/tools/fair-play-time',
     defaultEnabled: false
   },
   {
@@ -48,18 +47,10 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
     defaultEnabled: true
   },
   {
-    key: 'recognition',
-    name: 'Goals / Recognition',
-    description: 'Encourage effort, enjoyment and positive player development.',
-    coachPath: '/dashboard/coach/profile',
-    clubPath: '/dashboard/club/settings/recognition',
-    defaultEnabled: true
-  },
-  {
     key: 'availability_manager',
     name: 'Availability / Fixtures',
     description: 'Manage availability, matchdays and session responses clearly.',
-    coachPath: '/dashboard/coach/schedule',
+    coachPath: '/dashboard/coach/tools/availability',
     defaultEnabled: true
   }
 ];
