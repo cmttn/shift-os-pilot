@@ -4,6 +4,7 @@ import ParentFixturesClient from '@/components/dashboard/ParentFixturesClient';
 import { GoalAwardTrigger, type GoalAwardSession } from '@/components/dashboard/GoalAwardSheet';
 import ParentQuickSwitcher, { type ParentQuickSwitchOption } from '@/components/dashboard/ParentQuickSwitcher';
 import PlayerAccessTree from '@/components/dashboard/PlayerAccessTree';
+import PotmTicker, { type PotmTickerItem } from '@/components/dashboard/PotmTicker';
 import { getParentDashboardData } from '@/lib/dashboard/getParentDashboardData';
 import { createClient } from '@/lib/supabase/server';
 import { getCategoryMeta, getCurrentSeason, MILESTONES, type MilestoneId, type ParentStarCategory } from '@/lib/tools/starCategories';
@@ -19,6 +20,7 @@ interface PotmStatRow {
   player_id: string;
   last_won_at: string | null;
   last_session_id: string | null;
+  potm_count: number | null;
 }
 
 interface PlayerNameRow {
@@ -160,8 +162,8 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
 
   const [{ data: latestPotm }, { data: playerPotm }] = await Promise.all([
-    supabase.from('potm_stats').select('player_id,last_won_at,last_session_id').eq('team_id', team.team_id).gte('last_won_at', since).order('last_won_at', { ascending: false }).limit(1).maybeSingle<PotmStatRow>(),
-    supabase.from('potm_stats').select('player_id,last_won_at,last_session_id').eq('team_id', team.team_id).eq('player_id', player.id).gte('last_won_at', since).order('last_won_at', { ascending: false }).limit(1).maybeSingle<PotmStatRow>()
+    supabase.from('potm_stats').select('player_id,last_won_at,last_session_id,potm_count').eq('team_id', team.team_id).gte('last_won_at', since).order('last_won_at', { ascending: false }).limit(1).maybeSingle<PotmStatRow>(),
+    supabase.from('potm_stats').select('player_id,last_won_at,last_session_id,potm_count').eq('team_id', team.team_id).eq('player_id', player.id).order('last_won_at', { ascending: false }).limit(1).maybeSingle<PotmStatRow>()
   ]);
   const potmPlayerIds = Array.from(new Set([latestPotm?.player_id, playerPotm?.player_id].filter((id): id is string => Boolean(id))));
   const sessionIds = Array.from(new Set([latestPotm?.last_session_id, playerPotm?.last_session_id].filter((id): id is string => Boolean(id))));
@@ -173,6 +175,13 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
   const latestPotmPlayer = (potmPlayers ?? []).find((item) => item.id === latestPotm?.player_id) ?? null;
   const latestPotmSession = (potmSessions ?? []).find((item) => item.id === latestPotm?.last_session_id) ?? null;
   const playerPotmSession = (potmSessions ?? []).find((item) => item.id === playerPotm?.last_session_id) ?? null;
+  const potmTickerItems: PotmTickerItem[] = latestPotm ? [{
+    id: `${latestPotm.player_id}-${latestPotm.last_session_id ?? 'latest'}`,
+    playerName: fullName(latestPotmPlayer),
+    teamName: team.team_name,
+    opponent: latestPotmSession?.opponent ?? latestPotmSession?.title ?? 'Match',
+    cardUrl: null
+  }] : [];
 
   const [
     { data: nextGoal },
@@ -300,11 +309,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             </span>
           </div>
 
-          {latestPotm ? (
-            <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06]" style={{ backgroundColor: `${team.club_primary_colour}14` }}>
-              <p className="whitespace-nowrap px-4 py-2 text-sm text-white/75 [animation:ticker_20s_linear_infinite] hover:[animation-play-state:paused]">Player of the Match: {fullName(latestPotmPlayer)} vs {latestPotmSession?.opponent ?? latestPotmSession?.title ?? 'the opposition'}</p>
-            </div>
-          ) : null}
+          <div className="mt-4"><PotmTicker items={potmTickerItems} primaryColour={team.club_primary_colour} /></div>
 
           <section className="mt-8">
             <h1 className="mt-2 text-3xl font-black text-white">{player.full_name}</h1>
@@ -320,6 +325,7 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
             <section className="mt-5 rounded-2xl border p-5" style={{ backgroundColor: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.4)' }}>
               <h2 className="text-xl font-black text-amber-300">Player of the Match: {player.full_name}</h2>
               <p className="mt-2 text-sm text-white/45">{team.team_name} vs {playerPotmSession?.opponent ?? playerPotmSession?.title ?? 'Match'} | {formatDate(playerPotm?.last_won_at)}</p>
+              <p className="mt-1 text-xs text-white/35">{playerPotm.potm_count ?? 1} POTM win{(playerPotm.potm_count ?? 1) === 1 ? '' : 's'}</p>
               {cardPoll?.social_card_url ? <img src={cardPoll.social_card_url} alt="" className="mt-4 w-full rounded-xl border border-white/10" /> : null}
               <div className="mt-4 flex flex-wrap gap-2">
                 {cardPoll?.social_card_url ? <a href={cardPoll.social_card_url} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">Download Card</a> : null}
@@ -342,17 +348,14 @@ export default async function ParentPlayerTeamDashboardPage({ params }: ParentPl
       </section>
 
       <section className="hidden md:block">
-        {latestPotm ? (
-          <div className="overflow-hidden border-b border-white/[0.06]" style={{ backgroundColor: `${team.club_primary_colour}14` }}>
-            <p className="whitespace-nowrap px-8 py-2 text-sm text-white/75 [animation:ticker_20s_linear_infinite] hover:[animation-play-state:paused]">Player of the Match: {fullName(latestPotmPlayer)} vs {latestPotmSession?.opponent ?? latestPotmSession?.title ?? 'the opposition'}</p>
-          </div>
-        ) : null}
+        <div className="mx-auto max-w-[900px] pt-4"><PotmTicker items={potmTickerItems} primaryColour={team.club_primary_colour} /></div>
         {playerPotm ? (
           <section className="mx-auto mt-6 max-w-[900px] rounded-2xl border p-5" style={{ backgroundColor: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.4)' }}>
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-xl font-black text-amber-300">Player of the Match: {player.full_name}</h2>
                 <p className="mt-2 text-sm text-white/45">{team.team_name} vs {playerPotmSession?.opponent ?? playerPotmSession?.title ?? 'Match'} | {formatDate(playerPotm?.last_won_at)}</p>
+                <p className="mt-1 text-xs text-white/35">{playerPotm.potm_count ?? 1} POTM win{(playerPotm.potm_count ?? 1) === 1 ? '' : 's'}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {cardPoll?.social_card_url ? <a href={cardPoll.social_card_url} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">Download Card</a> : null}

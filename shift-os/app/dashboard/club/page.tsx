@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import ClubFixturesPanel from '@/components/dashboard/ClubFixturesPanel';
 import ClubTeamScroller from '@/components/dashboard/ClubTeamScroller';
+import PotmTicker, { type PotmTickerItem } from '@/components/dashboard/PotmTicker';
 import { getClubData } from '@/lib/dashboard/getClubData';
 import { createClient } from '@/lib/supabase/server';
 
@@ -34,6 +35,34 @@ function getComplianceStatus(expiryDate: string | null): 'compliant' | 'expiring
   if (days <= 0) return 'expired';
   if (days <= 90) return 'expiring';
   return 'compliant';
+}
+
+interface ClubPotmStatRow {
+  player_id: string;
+  team_id: string | null;
+  last_session_id: string | null;
+}
+
+interface ClubPotmPlayerRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
+interface ClubPotmSessionRow {
+  id: string;
+  opponent: string | null;
+  title: string | null;
+}
+
+interface ClubPotmPollRow {
+  session_id: string;
+  winner_player_id: string | null;
+  social_card_url: string | null;
+}
+
+function playerName(player: ClubPotmPlayerRow | undefined): string {
+  return [player?.first_name, player?.last_name].map((part) => part?.trim()).filter(Boolean).join(' ') || 'Player';
 }
 
 export default async function ClubDashboardHomePage() {
@@ -88,6 +117,31 @@ export default async function ClubDashboardHomePage() {
   const lastPlaytimeUsed = lastPlaytimeUsageData?.created_at
     ? new Date(lastPlaytimeUsageData.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
     : 'Not used yet';
+  const { data: recentPotmStatsData } = teamIds.length > 0
+    ? await supabase.from('potm_stats').select('player_id,team_id,last_session_id').eq('club_id', clubData.club.id).order('last_won_at', { ascending: false }).limit(8)
+    : { data: [] as ClubPotmStatRow[] };
+  const recentPotmStats = (recentPotmStatsData ?? []) as ClubPotmStatRow[];
+  const recentPotmPlayerIds = Array.from(new Set(recentPotmStats.map((item) => item.player_id)));
+  const recentPotmSessionIds = Array.from(new Set(recentPotmStats.map((item) => item.last_session_id).filter((id): id is string => Boolean(id))));
+  const [{ data: recentPotmPlayersData }, { data: recentPotmSessionsData }, { data: recentPotmPollsData }] = await Promise.all([
+    recentPotmPlayerIds.length > 0 ? supabase.from('players').select('id,first_name,last_name').in('id', recentPotmPlayerIds) : Promise.resolve({ data: [] as ClubPotmPlayerRow[] }),
+    recentPotmSessionIds.length > 0 ? supabase.from('sessions').select('id,opponent,title').in('id', recentPotmSessionIds) : Promise.resolve({ data: [] as ClubPotmSessionRow[] }),
+    recentPotmSessionIds.length > 0 ? supabase.from('potm_polls').select('session_id,winner_player_id,social_card_url').in('session_id', recentPotmSessionIds) : Promise.resolve({ data: [] as ClubPotmPollRow[] })
+  ]);
+  const recentPotmPlayers = (recentPotmPlayersData ?? []) as ClubPotmPlayerRow[];
+  const recentPotmSessions = (recentPotmSessionsData ?? []) as ClubPotmSessionRow[];
+  const recentPotmPolls = (recentPotmPollsData ?? []) as ClubPotmPollRow[];
+  const potmTickerItems: PotmTickerItem[] = recentPotmStats.map((stat) => {
+    const session = recentPotmSessions.find((item) => item.id === stat.last_session_id);
+    const poll = recentPotmPolls.find((item) => item.session_id === stat.last_session_id && item.winner_player_id === stat.player_id);
+    return {
+      id: `${stat.player_id}-${stat.last_session_id ?? 'latest'}`,
+      playerName: playerName(recentPotmPlayers.find((item) => item.id === stat.player_id)),
+      teamName: clubData.teams.find((team) => team.id === stat.team_id)?.name ?? clubData.club.name,
+      opponent: session?.opponent ?? session?.title ?? 'Match',
+      cardUrl: poll?.social_card_url ?? null
+    };
+  });
 
   return (
     <div className="-mx-4 -my-4 min-h-screen px-4 pb-16 pt-10 md:-mx-8 md:-my-8 md:px-8" style={{ background: `radial-gradient(ellipse at top, ${primaryColour}10 0%, transparent 50%), #080a0f` }}>
@@ -129,6 +183,10 @@ export default async function ClubDashboardHomePage() {
           </div>
         </div>
       </Link>
+
+      <div className="mt-4">
+        <PotmTicker title="Club POTM" items={potmTickerItems} primaryColour={primaryColour} />
+      </div>
 
       <section className="mt-4 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg, #0d1117, #0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

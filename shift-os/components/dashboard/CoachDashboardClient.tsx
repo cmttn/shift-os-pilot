@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 import { contrastText as getContrastText } from '@/lib/utils/contrastText';
 import CoachToolsStrip from '@/components/dashboard/CoachToolsStrip';
+import PotmTicker, { type PotmTickerItem } from '@/components/dashboard/PotmTicker';
 
 interface CoachDashboardClientProps {
   data: CoachDashboardData;
@@ -17,6 +18,7 @@ interface RecentPotm {
   playerName: string;
   opponent: string;
   date: string;
+  cardUrl: string | null;
 }
 
 interface PotmStatRow {
@@ -33,6 +35,10 @@ interface PlayerNameRow {
 interface SessionOpponentRow {
   opponent: string | null;
   title: string | null;
+}
+
+interface PotmPollCardRow {
+  social_card_url: string | null;
 }
 
 interface QuickInviteResult {
@@ -122,7 +128,7 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
   const validInitialTeamId = initialActiveTeamId && data.teams.some((team) => team.id === initialActiveTeamId) ? initialActiveTeamId : data.activeTeamId;
   const [activeTeamId, setActiveTeamId] = useState(validInitialTeamId);
   const [teamMenuOpen, setTeamMenuOpen] = useState(false);
-  const [recentPotm, setRecentPotm] = useState<RecentPotm | null>(null);
+  const [recentPotm, setRecentPotm] = useState<RecentPotm[]>([]);
   const [quickInviteName, setQuickInviteName] = useState('');
   const [quickInviteResult, setQuickInviteResult] = useState<QuickInviteResult | null>(null);
   const [quickInviteError, setQuickInviteError] = useState('');
@@ -151,7 +157,7 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
   useEffect(() => {
     async function loadRecentPotm() {
       if (!activeTeam?.id) {
-        setRecentPotm(null);
+        setRecentPotm([]);
         return;
       }
       const since = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -165,16 +171,17 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
         .limit(1)
         .maybeSingle<PotmStatRow>();
       if (!stat) {
-        setRecentPotm(null);
+        setRecentPotm([]);
         return;
       }
-      const [{ data: player }, { data: session }] = await Promise.all([
+      const [{ data: player }, { data: session }, { data: pollCard }] = await Promise.all([
         supabase.from('players').select('first_name,last_name').eq('id', stat.player_id).maybeSingle<PlayerNameRow>(),
-        stat.last_session_id ? supabase.from('sessions').select('opponent,title').eq('id', stat.last_session_id).maybeSingle<SessionOpponentRow>() : Promise.resolve({ data: null })
+        stat.last_session_id ? supabase.from('sessions').select('opponent,title').eq('id', stat.last_session_id).maybeSingle<SessionOpponentRow>() : Promise.resolve({ data: null }),
+        stat.last_session_id ? supabase.from('potm_polls').select('social_card_url').eq('session_id', stat.last_session_id).eq('winner_player_id', stat.player_id).maybeSingle<PotmPollCardRow>() : Promise.resolve({ data: null })
       ]);
       const playerName = [player?.first_name, player?.last_name].map((part) => part?.trim()).filter(Boolean).join(' ') || 'Player';
       const opponent = session?.opponent ?? session?.title ?? 'Match';
-      setRecentPotm({ playerName, opponent, date: stat.last_won_at ? formatDate(stat.last_won_at) : '' });
+      setRecentPotm([{ playerName, opponent, date: stat.last_won_at ? formatDate(stat.last_won_at) : '', cardUrl: pollCard?.social_card_url ?? null }]);
     }
     void loadRecentPotm();
   }, [activeTeam?.id]);
@@ -298,6 +305,13 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
       </Link>
     </div>
   );
+  const potmTickerItems: PotmTickerItem[] = recentPotm.map((item) => ({
+    id: `${item.playerName}-${item.date}`,
+    playerName: item.playerName,
+    teamName: activeTeam?.name ?? 'Team',
+    opponent: item.opponent,
+    cardUrl: item.cardUrl
+  }));
 
   return (
     <main className="min-h-screen text-white" style={{ backgroundColor: '#080a0f' }}>
@@ -334,12 +348,7 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
 
         <div className="px-5 pt-5 md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)] md:gap-6 md:px-0 md:pt-8">
           <div>
-          {recentPotm ? (
-            <div className="mb-4 flex h-11 items-center rounded-xl border px-4 text-sm text-white" style={{ backgroundColor: `${primaryColour}1a`, borderColor: `${primaryColour}33` }}>
-              <span className="mr-2" style={{ color: primaryColour }}>🏆</span>
-              <span className="truncate">Last POTM: {recentPotm.playerName} vs {recentPotm.opponent} · {recentPotm.date}</span>
-            </div>
-          ) : null}
+          <div className="mb-4"><PotmTicker items={potmTickerItems} primaryColour={primaryColour} /></div>
           {nextFixture ? (
             <section className="mb-8 block max-h-[220px] overflow-hidden rounded-2xl p-4 text-white shadow-2xl transition-all duration-300 ease-out hover:-translate-y-0.5 md:max-h-none md:p-5" style={{ background: `linear-gradient(135deg, ${primaryColour} 0%, #06100a 100%)` }}>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">Next {nextFixture.type}</p>
