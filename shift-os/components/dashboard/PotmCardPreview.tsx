@@ -52,7 +52,7 @@ export default function PotmCardPreview({ playerName, teamName, opponent, messag
       <div className="relative flex h-full flex-col p-5 sm:p-8">
         <div className="flex h-[31%] min-h-[132px] flex-col items-center">
           <p className="whitespace-nowrap text-center text-[clamp(12px,3.5vw,24px)] font-black uppercase leading-none tracking-[0.13em] text-white sm:tracking-[0.22em]">Player of the Match</p>
-          <div className="mt-2 flex h-24 w-24 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)] sm:h-36 sm:w-36">
+          <div className="mt-1 flex h-24 w-24 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)] sm:mt-2 sm:h-36 sm:w-36">
             {badgeUrl ? <img src={badgeUrl} alt="" className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center rounded-[24px] bg-white/15 text-3xl font-black text-white ring-1 ring-white/20 sm:rounded-[30px] sm:text-4xl">{initials(displayClub)}</div>}
           </div>
         </div>
@@ -66,12 +66,12 @@ export default function PotmCardPreview({ playerName, teamName, opponent, messag
           <p className="mx-auto mt-3 text-[9px] font-semibold uppercase tracking-[0.13em] text-white/50 sm:text-[10px]">Awarded by parents</p>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.08] bg-black/[0.18] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur sm:p-4">
+        <div className="mt-2 rounded-2xl border border-white/[0.08] bg-black/[0.18] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur sm:mt-3 sm:p-4">
           <p className="line-clamp-2 text-xs italic leading-relaxed text-white/86 sm:line-clamp-3 sm:text-sm">&ldquo;{displayMessage}&rdquo;</p>
         </div>
 
-        <div className="flex items-end justify-between gap-4 px-2 pb-2 pt-4 text-[8px] font-semibold uppercase tracking-[0.16em] sm:px-3 sm:pb-3">
-          <span className="min-w-0 flex-1 pr-4 pb-2 text-[9px] tracking-[0.18em] text-white/38 sm:text-[10px]">{displayClub}</span>
+        <div className="flex items-end justify-between gap-4 px-2 pb-2 pt-4 text-[8px] font-semibold uppercase sm:px-3 sm:pb-3">
+          <span className="min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis pr-4 pb-1 text-[8px] tracking-[0.08em] text-white/38 sm:text-[9px] sm:tracking-[0.11em]">{displayClub}</span>
           <span className="shrink-0 text-[6px] text-white/20 sm:text-[7px]">Powered by SHIFT/OS</span>
         </div>
       </div>
