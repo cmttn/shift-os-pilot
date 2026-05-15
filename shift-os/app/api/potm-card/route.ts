@@ -129,8 +129,8 @@ export async function POST(request: Request) {
         React.createElement('div', { key: 'label', style: { position: 'absolute', left: 58, right: 58, top: 106, textAlign: 'center', fontSize: 43, lineHeight: 1, letterSpacing: 8, fontWeight: 900, textTransform: 'uppercase', color: 'rgba(255,255,255,0.94)' } }, 'PLAYER OF THE MATCH'),
         React.createElement('div', { key: 'badge-wrap', style: { position: 'absolute', left: 394, top: 170, width: 292, height: 292, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
           club?.badge_url
-            ? React.createElement('img', { key: 'badge', src: club.badge_url, width: 292, height: 292, style: { objectFit: 'contain' } })
-            : React.createElement('div', { key: 'badge-fallback', style: { width: 268, height: 268, borderRadius: 52, backgroundColor: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 78, fontWeight: 900 } }, initials(displayClub))
+            ? React.createElement('img', { key: 'badge', src: club.badge_url, width: 292, height: 292, style: { objectFit: 'contain', transform: 'scale(1.6)' } })
+            : React.createElement('div', { key: 'badge-fallback', style: { width: 268, height: 268, borderRadius: 52, backgroundColor: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 78, fontWeight: 900, transform: 'scale(1.6)' } }, initials(displayClub))
         ),
         React.createElement('div', { key: 'main', style: { position: 'absolute', left: 58, right: 58, top: 430, display: 'flex', flexDirection: 'column', alignItems: 'center' } }, [
           React.createElement('div', { key: 'name', style: { maxWidth: 900, textAlign: 'center', fontSize: nameSize, lineHeight: 0.92, fontWeight: 900, letterSpacing: -3 } }, winnerName),

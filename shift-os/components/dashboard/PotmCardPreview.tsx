@@ -53,7 +53,7 @@ export default function PotmCardPreview({ playerName, teamName, opponent, messag
         <p className="absolute left-0 right-0 top-[5%] whitespace-nowrap text-center text-[clamp(12px,3.25vw,24px)] font-black uppercase leading-none tracking-[0.13em] text-white sm:tracking-[0.22em]">Player of the Match</p>
 
         <div className="absolute left-1/2 top-[10%] flex h-[24%] w-[24%] -translate-x-1/2 items-center justify-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.45)]">
-          {badgeUrl ? <img src={badgeUrl} alt="" className="max-h-full max-w-full object-contain" /> : <div className="flex h-full w-full items-center justify-center rounded-[24px] bg-white/15 text-3xl font-black text-white ring-1 ring-white/20 sm:rounded-[34px] sm:text-5xl">{initials(displayClub)}</div>}
+          {badgeUrl ? <img src={badgeUrl} alt="" className="max-h-full max-w-full scale-[1.6] object-contain" /> : <div className="flex h-full w-full scale-[1.6] items-center justify-center rounded-[24px] bg-white/15 text-3xl font-black text-white ring-1 ring-white/20 sm:rounded-[34px] sm:text-5xl">{initials(displayClub)}</div>}
         </div>
 
         <div className="absolute left-0 right-0 top-[36%] flex flex-col items-center">
