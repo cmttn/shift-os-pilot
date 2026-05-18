@@ -20,6 +20,10 @@ interface RawSession {
   is_home: boolean | null;
   poll_sent: boolean | null;
   poll_sent_at: string | null;
+  auto_chase_enabled: boolean | null;
+  auto_chase_delay_hours: number | null;
+  auto_chase_due_at: string | null;
+  auto_chase_sent_at: string | null;
   session_token: string;
   opposition_contact_name: string | null;
   opposition_contact_phone: string | null;
@@ -40,7 +44,7 @@ export default async function CoachSessionPage({ params }: SessionPageProps) {
   const coachData = await getCoachData();
   if (!coachData) redirect('/dashboard/coach/welcome');
   const supabase = await createClient();
-  const { data: sessionData } = await supabase.from('sessions').select('id,team_id,type,title,opponent,session_date,location,is_home,poll_sent,poll_sent_at,session_token,opposition_contact_name,opposition_contact_phone,full_address,postcode,coach_notes,tournify_link').eq('id', params.sessionId).maybeSingle<RawSession>();
+  const { data: sessionData } = await supabase.from('sessions').select('id,team_id,type,title,opponent,session_date,location,is_home,poll_sent,poll_sent_at,auto_chase_enabled,auto_chase_delay_hours,auto_chase_due_at,auto_chase_sent_at,session_token,opposition_contact_name,opposition_contact_phone,full_address,postcode,coach_notes,tournify_link').eq('id', params.sessionId).maybeSingle<RawSession>();
   if (!sessionData || !coachData.teams.some((team) => team.id === sessionData.team_id)) notFound();
   const team = coachData.teams.find((item) => item.id === sessionData.team_id);
   if (!team) notFound();

@@ -53,6 +53,22 @@ function getPollUrl(token: string | null): string {
   return `${window.location.origin}/poll/${token}`;
 }
 
+function formatChaseStatus(session: AvailabilitySession, state: PollState): string | null {
+  if (state === 'poll_not_sent') return null;
+  if (state === 'poll_complete') return 'Poll complete';
+  if (session.auto_chase_sent_at) return 'Auto Chase sent';
+  if (session.auto_chase_enabled && session.auto_chase_due_at) {
+    const due = new Date(session.auto_chase_due_at);
+    if (Number.isNaN(due.valueOf())) return session.auto_chase_delay_hours ? `Auto Chase set: ${session.auto_chase_delay_hours}h` : 'Auto Chase set';
+    const minutes = Math.round((due.valueOf() - Date.now()) / 60000);
+    if (minutes <= 0) return 'Auto Chase due now';
+    if (minutes < 60) return `Reminder due in ${minutes}m`;
+    const hours = Math.round(minutes / 60);
+    return `Reminder due in ${hours}h`;
+  }
+  return null;
+}
+
 function buildReminder(session: AvailabilitySession): string {
   const title = session.opponent ? `${session.teamName} vs ${session.opponent}` : `${session.teamName} ${session.title ?? session.type}`;
   const pollUrl = getPollUrl(session.session_token);
@@ -84,6 +100,7 @@ export default function CoachAvailabilityToolClient({ sessions, primaryColour }:
         const formatted = formatDateTime(session.session_date);
         const ctaHref = `/dashboard/coach/sessions/${session.id}`;
         const badgeColour = state === 'poll_complete' ? '#10b981' : state === 'poll_incomplete' ? '#f59e0b' : state === 'poll_not_sent' ? 'rgba(255,255,255,0.35)' : primaryColour;
+        const chaseStatus = formatChaseStatus(session, state);
         return (
           <article key={session.id} className="rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
             <div className="flex items-start justify-between gap-4">
@@ -100,6 +117,12 @@ export default function CoachAvailabilityToolClient({ sessions, primaryColour }:
               <p>{formatted.date}{formatted.time ? ` at ${formatted.time}` : ''}</p>
               <p>{session.full_address || session.location || 'Location TBC'}</p>
             </div>
+
+            {chaseStatus ? (
+              <p className={`mt-3 rounded-xl border px-3 py-2 text-xs ${state === 'poll_complete' ? 'border-emerald-500/10 bg-emerald-500/5 text-emerald-300/80' : 'border-white/[0.06] bg-white/[0.03] text-white/45'}`}>
+                {chaseStatus}
+              </p>
+            ) : null}
 
             <div className="mt-4 grid grid-cols-4 gap-2">
               {[

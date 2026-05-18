@@ -60,6 +60,10 @@ export interface CoachDashboardData {
     tournify_link: string | null;
     session_token: string | null;
     poll_sent_at: string | null;
+    auto_chase_enabled: boolean;
+    auto_chase_delay_hours: number | null;
+    auto_chase_due_at: string | null;
+    auto_chase_sent_at: string | null;
     is_home: boolean;
     poll_sent: boolean;
     available_count: number;
@@ -145,6 +149,10 @@ interface RawSession {
   tournify_link: string | null;
   session_token: string | null;
   poll_sent_at: string | null;
+  auto_chase_enabled: boolean | null;
+  auto_chase_delay_hours: number | null;
+  auto_chase_due_at: string | null;
+  auto_chase_sent_at: string | null;
   is_home: boolean | null;
   poll_sent: boolean | null;
 }
@@ -214,7 +222,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       .order('first_name', { ascending: true }),
     supabase
       .from('sessions')
-      .select('id,team_id,type,title,opponent,session_date,location,opposition_contact_name,opposition_contact_phone,full_address,postcode,coach_notes,tournify_link,session_token,poll_sent_at,is_home,poll_sent')
+      .select('id,team_id,type,title,opponent,session_date,location,opposition_contact_name,opposition_contact_phone,full_address,postcode,coach_notes,tournify_link,session_token,poll_sent_at,auto_chase_enabled,auto_chase_delay_hours,auto_chase_due_at,auto_chase_sent_at,is_home,poll_sent')
       .in('team_id', teamIds)
       .eq('is_active', true)
       .gte('session_date', new Date().toISOString())
@@ -300,6 +308,10 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       tournify_link: item.tournify_link,
       session_token: item.session_token,
       poll_sent_at: item.poll_sent_at,
+      auto_chase_enabled: item.auto_chase_enabled ?? false,
+      auto_chase_delay_hours: item.auto_chase_delay_hours,
+      auto_chase_due_at: item.auto_chase_due_at,
+      auto_chase_sent_at: item.auto_chase_sent_at,
       is_home: item.is_home ?? true,
       poll_sent: item.poll_sent ?? false,
       available_count: responses.filter((response) => response.status === 'available').length,

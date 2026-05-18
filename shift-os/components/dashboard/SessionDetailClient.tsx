@@ -35,6 +35,10 @@ export interface SessionDetailData {
     is_home: boolean;
     poll_sent: boolean;
     poll_sent_at: string | null;
+    auto_chase_enabled: boolean | null;
+    auto_chase_delay_hours: number | null;
+    auto_chase_due_at: string | null;
+    auto_chase_sent_at: string | null;
     session_token: string;
   };
   team: { id: string; name: string; join_code: string | null; primaryColour: string };
@@ -72,11 +76,17 @@ function displayAddress(session: { full_address: string | null; postcode: string
   return session.location ?? 'TBC';
 }
 
+const autoChaseOptions = [1, 6, 12, 24, 48] as const;
+
 export default function SessionDetailClient({ data }: SessionDetailClientProps) {
   const [responses, setResponses] = useState(data.responses);
   const [weekOffIds, setWeekOffIds] = useState<string[]>(data.responses.filter((response) => response.status === 'week_off').map((response) => response.player_id));
   const [pollSent, setPollSent] = useState(data.session.poll_sent);
   const [pollSentAt, setPollSentAt] = useState(data.session.poll_sent_at);
+  const [autoChaseEnabled, setAutoChaseEnabled] = useState(Boolean(data.session.auto_chase_enabled));
+  const [autoChaseDelay, setAutoChaseDelay] = useState<number>(data.session.auto_chase_delay_hours ?? 24);
+  const [autoChaseDueAt, setAutoChaseDueAt] = useState(data.session.auto_chase_due_at);
+  const [autoChaseSentAt, setAutoChaseSentAt] = useState(data.session.auto_chase_sent_at);
   const [shareMessage, setShareMessage] = useState('');
   const [copied, setCopied] = useState('');
   const [coachNotes, setCoachNotes] = useState(data.session.coach_notes ?? '');
@@ -144,14 +154,25 @@ _Powered by Shift OS_`;
     }
 
     const nextResponses = (inserted ?? []) as SessionDetailResponse[];
-    const { error: updateError } = await supabase.from('sessions').update({ poll_sent: true, poll_sent_at: new Date().toISOString() }).eq('id', data.session.id);
+    const sentAt = new Date();
+    const chaseDueAt = autoChaseEnabled ? new Date(sentAt.valueOf() + autoChaseDelay * 60 * 60 * 1000).toISOString() : null;
+    const { error: updateError } = await supabase.from('sessions').update({
+      poll_sent: true,
+      poll_sent_at: sentAt.toISOString(),
+      auto_chase_enabled: autoChaseEnabled,
+      auto_chase_delay_hours: autoChaseEnabled ? autoChaseDelay : null,
+      auto_chase_due_at: chaseDueAt,
+      auto_chase_sent_at: null
+    }).eq('id', data.session.id);
     if (updateError) {
       setError(updateError.message);
       return;
     }
     setResponses(nextResponses);
     setPollSent(true);
-    setPollSentAt(new Date().toISOString());
+    setPollSentAt(sentAt.toISOString());
+    setAutoChaseDueAt(chaseDueAt);
+    setAutoChaseSentAt(null);
     setShareMessage(buildMessage());
   }
 
@@ -209,6 +230,39 @@ _Powered by Shift OS_`;
         <section className="mt-5 rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <p className="text-sm text-white/55">Available {counts.available} / Not available {counts.unavailable} / Pending {counts.pending} / Week off {counts.weekOff}</p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full" style={{ width: `${confirmedPercent}%`, backgroundColor: primaryColour }} /></div>
+          <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-white">Auto Chase</p>
+                <p className="mt-1 text-xs text-white/35">Automatically remind parents who have not responded.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAutoChaseEnabled((enabled) => !enabled)}
+                className={`relative h-7 w-12 rounded-full transition-all duration-300 ease-out ${autoChaseEnabled ? 'bg-emerald-500' : 'bg-white/[0.12]'}`}
+                aria-pressed={autoChaseEnabled}
+              >
+                <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all duration-300 ease-out ${autoChaseEnabled ? 'left-6' : 'left-1'}`} />
+              </button>
+            </div>
+            {autoChaseEnabled ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {autoChaseOptions.map((hours) => (
+                  <button
+                    key={hours}
+                    type="button"
+                    onClick={() => setAutoChaseDelay(hours)}
+                    className="rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                    style={autoChaseDelay === hours ? { borderColor: primaryColour, backgroundColor: `${primaryColour}1f`, color: '#ffffff' } : { borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)' }}
+                  >
+                    {hours} hour{hours === 1 ? '' : 's'}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {pollSent && autoChaseEnabled && !autoChaseSentAt && autoChaseDueAt ? <p className="mt-3 text-xs text-white/35">Reminder due {formatDate(autoChaseDueAt)}</p> : null}
+            {pollSent && autoChaseSentAt ? <p className="mt-3 text-xs text-emerald-300">Auto Chase sent {formatDate(autoChaseSentAt)}</p> : null}
+          </div>
         </section>
 
         <section className="mt-5">
