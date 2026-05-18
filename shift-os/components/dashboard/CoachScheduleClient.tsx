@@ -21,6 +21,7 @@ export default function CoachScheduleClient({ data }: CoachScheduleClientProps) 
   const [draftLinks, setDraftLinks] = useState<Record<string, string>>({});
   const primaryColour = data.teams[0]?.club_primary_colour ?? '#00C851';
   const primaryText = contrastText(primaryColour);
+  const canCreateSessions = data.teams.some((team) => !team.is_club_managed);
 
   async function saveLink(sessionId: string) {
     const link = draftLinks[sessionId]?.trim();
@@ -37,8 +38,17 @@ export default function CoachScheduleClient({ data }: CoachScheduleClientProps) 
             <p className="text-xs uppercase tracking-[0.3em] text-white/30">Coach Schedule</p>
             <h1 className="mt-3 text-3xl font-black">Schedule</h1>
           </div>
-          <Link href="/dashboard/coach/sessions/new" className="rounded-full px-5 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: primaryText }}>Add Session +</Link>
+          {canCreateSessions ? (
+            <Link href="/dashboard/coach/sessions/new" className="rounded-full px-5 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: primaryText }}>Add Session +</Link>
+          ) : (
+            <span className="rounded-full border border-white/[0.08] px-5 py-2 text-sm font-semibold text-white/35">Club managed</span>
+          )}
         </div>
+        {!canCreateSessions ? (
+          <p className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-white/40">
+            Fixture creation is managed by your club. Open a fixture to add notes or send availability polls.
+          </p>
+        ) : null}
         <div className="mt-8 space-y-4">
           {sessions.map((session) => (
             <article key={session.id} className="rounded-2xl border p-5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -65,12 +75,14 @@ export default function CoachScheduleClient({ data }: CoachScheduleClientProps) 
             </article>
           ))}
         </div>
-        <details className="group fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8">
-          <summary className="flex h-14 w-14 cursor-pointer list-none items-center justify-center rounded-full text-2xl font-semibold shadow-2xl [&::-webkit-details-marker]:hidden" style={{ backgroundColor: primaryColour, color: primaryText }}>+</summary>
-          <div className="absolute bottom-16 right-0 flex flex-col items-end gap-2">
-            {['match', 'training', 'tournament'].map((type) => <Link key={type} href={`/dashboard/coach/sessions/new?type=${type}`} className="whitespace-nowrap rounded-full border border-white/10 bg-[#161b27] px-4 py-2 text-sm capitalize text-white">{type}</Link>)}
-          </div>
-        </details>
+        {canCreateSessions ? (
+          <details className="group fixed bottom-24 right-5 z-50 md:bottom-8 md:right-8">
+            <summary className="flex h-14 w-14 cursor-pointer list-none items-center justify-center rounded-full text-2xl font-semibold shadow-2xl [&::-webkit-details-marker]:hidden" style={{ backgroundColor: primaryColour, color: primaryText }}>+</summary>
+            <div className="absolute bottom-16 right-0 flex flex-col items-end gap-2">
+              {['match', 'training', 'tournament'].map((type) => <Link key={type} href={`/dashboard/coach/sessions/new?type=${type}`} className="whitespace-nowrap rounded-full border border-white/10 bg-[#161b27] px-4 py-2 text-sm capitalize text-white">{type}</Link>)}
+            </div>
+          </details>
+        ) : null}
       </div>
     </main>
   );
