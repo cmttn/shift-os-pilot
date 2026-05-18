@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CoachDashboardData } from '@/lib/dashboard/getCoachData';
 import { createClient } from '@/lib/supabase/client';
 import { TOOL_REGISTRY, type ToolDefinition, type ToolFeatureKey } from '@/lib/tools/toolRegistry';
@@ -26,6 +26,10 @@ function getPendingRequestKey(teamId: string, featureKey: ToolFeatureKey): strin
   return `${teamId}:${featureKey}`;
 }
 
+function getSeenToolKey(coachId: string, teamId: string, featureKey: ToolFeatureKey, enabledAt: string): string {
+  return `shift-os:coach-tool-seen:${coachId}:${teamId}:${featureKey}:${enabledAt}`;
+}
+
 function getToolSortScore(item: ToolCardModel): number {
   if (item.isNewlyAvailable) return 0;
   if (item.state === 'available') return 1;
@@ -39,9 +43,21 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
     .filter((request) => request.status === 'pending')
     .map((request) => getPendingRequestKey(request.team_id ?? '', request.feature_key as ToolFeatureKey));
   const [requestedKeys, setRequestedKeys] = useState<string[]>(initialRequested);
+  const [seenToolKeys, setSeenToolKeys] = useState<string[]>([]);
   const [loadingKey, setLoadingKey] = useState<ToolFeatureKey | null>(null);
   const [error, setError] = useState('');
   const buttonTextColour = contrastText(primaryColour);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const seenKeys = TOOL_REGISTRY.map((tool) => {
+      const enabledAt = data.enabledFeatureUpdates[tool.key];
+      return enabledAt ? getSeenToolKey(data.coach.id, activeTeamId, tool.key, enabledAt) : null;
+    }).filter((key): key is string => Boolean(key && window.localStorage.getItem(key)));
+
+    setSeenToolKeys(seenKeys);
+  }, [activeTeamId, data.coach.id, data.enabledFeatureUpdates]);
 
   const cards = useMemo<ToolCardModel[]>(() => {
     return TOOL_REGISTRY.map((tool) => {
@@ -49,13 +65,15 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
       const requestKey = getPendingRequestKey(activeTeamId, tool.key);
       const requested = requestedKeys.includes(requestKey);
       const state: ToolState = enabled ? 'available' : requested ? 'requested' : 'locked';
+      const enabledAt = data.enabledFeatureUpdates[tool.key];
+      const seenKey = enabledAt ? getSeenToolKey(data.coach.id, activeTeamId, tool.key, enabledAt) : null;
       return {
         tool,
         state,
-        isNewlyAvailable: enabled && !tool.defaultEnabled
+        isNewlyAvailable: Boolean(enabled && !tool.defaultEnabled && seenKey && !seenToolKeys.includes(seenKey))
       };
     }).sort((first, second) => getToolSortScore(first) - getToolSortScore(second) || first.tool.name.localeCompare(second.tool.name));
-  }, [activeTeamId, data.enabledFeatures, data.isClubManaged, requestedKeys]);
+  }, [activeTeamId, data.coach.id, data.enabledFeatureUpdates, data.enabledFeatures, data.isClubManaged, requestedKeys, seenToolKeys]);
 
   const requestUnlock = async (tool: ToolDefinition) => {
     if (!activeTeam?.club_id) {
@@ -84,6 +102,15 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
       setRequestedKeys((current) => current.filter((key) => key !== requestKey));
       setError(insertError.message || 'Could not request this tool yet.');
     }
+  };
+
+  const markToolSeen = (tool: ToolDefinition) => {
+    const enabledAt = data.enabledFeatureUpdates[tool.key];
+    if (!enabledAt || typeof window === 'undefined') return;
+
+    const seenKey = getSeenToolKey(data.coach.id, activeTeamId, tool.key, enabledAt);
+    window.localStorage.setItem(seenKey, 'true');
+    setSeenToolKeys((current) => current.includes(seenKey) ? current : [...current, seenKey]);
   };
 
   const wrapperClass = variant === 'mobile' ? 'md:hidden' : 'hidden md:block';
@@ -134,7 +161,7 @@ export default function CoachToolsStrip({ data, activeTeamId, primaryColour, var
                     <span className={variant === 'mobile' ? 'mb-2 inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold' : 'mb-2 inline-flex rounded-full px-2 py-1 text-[10px] font-semibold'} style={{ backgroundColor: `${primaryColour}24`, color: primaryColour }}>
                       Available
                     </span>
-                    <Link href={tool.coachPath} className={variant === 'mobile' ? 'inline-flex w-full justify-center rounded-full px-3 py-1.5 text-xs font-semibold' : 'inline-flex w-full justify-center rounded-full px-4 py-2 text-sm font-semibold'} style={{ backgroundColor: primaryColour, color: buttonTextColour }}>
+                    <Link href={tool.coachPath} onClick={() => markToolSeen(tool)} className={variant === 'mobile' ? 'inline-flex w-full justify-center rounded-full px-3 py-1.5 text-xs font-semibold' : 'inline-flex w-full justify-center rounded-full px-4 py-2 text-sm font-semibold'} style={{ backgroundColor: primaryColour, color: buttonTextColour }}>
                       Open
                     </Link>
                   </>

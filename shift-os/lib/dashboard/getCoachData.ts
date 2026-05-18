@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getDefaultEnabledToolKeys, TOOL_FEATURE_KEYS } from '@/lib/tools/toolRegistry';
+import { getDefaultEnabledToolKeys, TOOL_FEATURE_KEYS, type ToolFeatureKey } from '@/lib/tools/toolRegistry';
 import { resolveTeamBranding } from '@/lib/utils/teamBranding';
 
 export interface CoachDashboardData {
@@ -73,6 +73,7 @@ export interface CoachDashboardData {
     week_off_count: number;
   }>;
   enabledFeatures: string[];
+  enabledFeatureUpdates: Partial<Record<ToolFeatureKey, string>>;
   toolUnlockRequests: Array<{
     feature_key: string;
     team_id: string | null;
@@ -206,6 +207,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       players: [],
       upcomingSessions: [],
       enabledFeatures: getDefaultEnabledToolKeys(),
+      enabledFeatureUpdates: {},
       toolUnlockRequests: [],
       isClubManaged: false
     };
@@ -330,8 +332,8 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
   const managedClubId = activeTeam?.club_id ?? null;
   const [{ data: featuresData }, { data: unlockRequestsData }] = await Promise.all([
     managedClubId
-      ? supabase.from('feature_toggles').select('feature_key,is_enabled').eq('club_id', managedClubId)
-      : Promise.resolve({ data: [] as Array<{ feature_key: string | null; is_enabled: boolean | null }> }),
+      ? supabase.from('feature_toggles').select('feature_key,is_enabled,updated_at').eq('club_id', managedClubId)
+      : Promise.resolve({ data: [] as Array<{ feature_key: string | null; is_enabled: boolean | null; updated_at: string | null }> }),
     supabase
       .from('tool_unlock_requests')
       .select('feature_key,team_id,status')
@@ -346,6 +348,11 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
         return getDefaultEnabledToolKeys().includes(featureKey);
       })
     : [...TOOL_FEATURE_KEYS];
+  const enabledFeatureUpdates = TOOL_FEATURE_KEYS.reduce<Partial<Record<ToolFeatureKey, string>>>((updates, featureKey) => {
+    const toggle = featureRows.find((feature) => feature.feature_key === featureKey);
+    if (toggle?.is_enabled && toggle.updated_at) updates[featureKey] = toggle.updated_at;
+    return updates;
+  }, {});
   const toolUnlockRequests = ((unlockRequestsData ?? []) as ToolUnlockRequestRow[])
     .filter((request) => request.feature_key)
     .map((request) => ({
@@ -361,6 +368,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
     players,
     upcomingSessions,
     enabledFeatures,
+    enabledFeatureUpdates,
     toolUnlockRequests,
     isClubManaged
   };
