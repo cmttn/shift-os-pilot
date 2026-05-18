@@ -77,9 +77,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No images were uploaded.', fixtures: [] }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY ?? process.env.CLAUDE_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: 'Anthropic API key is not configured.', fixtures: [] }, { status: 500 });
+    return NextResponse.json({
+      code: 'ocr_not_configured',
+      error: 'Fixture screenshot scanning is not configured. Add ANTHROPIC_API_KEY in Vercel and redeploy.',
+      fixtures: []
+    }, { status: 503 });
   }
 
   const client = new Anthropic({ apiKey });
@@ -137,6 +141,13 @@ Rules:
     }
   } catch (error) {
     console.error('[fixtures/extract-from-image]', error);
+    if (error instanceof Error && /api key|authentication|unauthorized/i.test(error.message)) {
+      return NextResponse.json({
+        code: 'ocr_not_configured',
+        error: 'Fixture screenshot scanning could not authenticate with Anthropic. Check ANTHROPIC_API_KEY in Vercel.',
+        fixtures: []
+      }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Could not read fixtures', fixtures: [] }, { status: 422 });
   }
 

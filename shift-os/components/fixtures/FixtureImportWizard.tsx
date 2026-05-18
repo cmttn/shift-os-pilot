@@ -47,6 +47,7 @@ interface ExtractResponse {
   source?: string;
   error?: string;
   message?: string;
+  code?: string;
 }
 
 const methodCopy: Record<ImportMethod, { name: string; icon: string; iconClass: string; description: string; tags: string[] }> = {
@@ -160,6 +161,7 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
   const [successCount, setSuccessCount] = useState(0);
 
   const activeTeam = teams.find((team) => team.id === selectedTeamId) ?? teams[0] ?? null;
@@ -176,11 +178,13 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
     setFullTimeUrl('');
     setFixtures([]);
     setError('');
+    setErrorCode('');
     setScreen('steps');
   }
 
   function goBack() {
     setError('');
+    setErrorCode('');
     if (screen === 'review') {
       setScreen('steps');
       setStep(4);
@@ -215,6 +219,7 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
     if (files.length === 0) return;
     setLoading(true);
     setError('');
+    setErrorCode('');
     const formData = new FormData();
     files.forEach((file) => formData.append('images', file));
     const response = await fetch('/api/fixtures/extract-from-image', {
@@ -226,11 +231,13 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
     if (!response.ok || payload.error) {
       setFixtures([]);
       setError(payload.error ?? 'Could not read fixtures from those screenshots.');
+      setErrorCode(payload.code ?? '');
       setScreen('review');
       return;
     }
     setFixtures((payload.fixtures ?? []).map(normaliseApiFixture));
     setError(payload.message ?? '');
+    setErrorCode('');
     setScreen('review');
   }
 
@@ -238,6 +245,7 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
     if (!validFullTimeUrl || !activeTeam) return;
     setLoading(true);
     setError('');
+    setErrorCode('');
     const response = await fetch('/api/fixtures/fetch-from-fulltime', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -248,11 +256,13 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
     if (!response.ok || payload.error) {
       setFixtures([]);
       setError(payload.error ?? 'Could not fetch fixtures from Full-Time.');
+      setErrorCode(payload.code ?? '');
       setScreen('review');
       return;
     }
     setFixtures((payload.fixtures ?? []).map(normaliseApiFixture));
     setError(payload.message ?? '');
+    setErrorCode('');
     setScreen('review');
   }
 
@@ -262,11 +272,13 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
     const invalid = included.some((fixture) => !fixture.date || !fixture.time || (fixture.type === 'match' && !fixture.opponent.trim()));
     if (invalid) {
       setError('Please complete the date, time and opponent for every selected fixture.');
+      setErrorCode('');
       return;
     }
 
     setLoading(true);
     setError('');
+    setErrorCode('');
     const supabase = createClient();
     const inserts = included.map((fixture) => ({
       team_id: activeTeam.id,
@@ -285,6 +297,7 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
     setLoading(false);
     if (insertError) {
       setError(insertError.message);
+      setErrorCode('');
       return;
     }
 
@@ -388,7 +401,7 @@ export default function FixtureImportWizard({ teams, coachId, primaryColour }: F
 
         {fixtures.length === 0 ? (
           <section className="mt-8 rounded-2xl border border-red-500/10 bg-red-500/[0.06] p-5">
-            <h2 className="font-semibold text-white">No fixtures could be found.</h2>
+            <h2 className="font-semibold text-white">{errorCode === 'ocr_not_configured' ? 'Screenshot import is not configured.' : 'No fixtures could be found.'}</h2>
             <p className="mt-2 text-xs text-white/40">{error || 'Try again with a clearer screenshot or URL.'}</p>
             <button type="button" onClick={goBack} className="mt-5 rounded-full border border-white/[0.08] px-5 py-3 text-sm font-semibold text-white/50">Try again ←</button>
           </section>
