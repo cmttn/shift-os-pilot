@@ -54,6 +54,7 @@ export interface PendingCoachInvite {
 
 export interface FixtureRecord {
   id: string;
+  team_id: string;
   fixture_date: string;
   opponent: string;
   home_away: 'home' | 'away' | string;
@@ -325,6 +326,7 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
     }),
     fixtures: sessions.map((item) => ({
       id: item.id,
+      team_id: item.team_id,
       fixture_date: item.session_date,
       opponent: item.opponent ?? item.title ?? item.type,
       home_away: 'home',

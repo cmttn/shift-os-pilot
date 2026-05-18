@@ -1,3 +1,5 @@
+import ClubFixtureSettings from '@/components/dashboard/ClubFixtureSettings';
+import ClubFixturesManager from '@/components/dashboard/ClubFixturesManager';
 import { getClubData } from '@/lib/dashboard/getClubData';
 
 export default async function ClubFixturesPage() {
@@ -5,9 +7,15 @@ export default async function ClubFixturesPage() {
   if (!clubData) return null;
 
   return (
-    <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-      <h2 className="text-2xl font-bold text-white">Fixtures</h2>
-      <p className="mt-2 text-gray-400">Track and plan fixtures for your club.</p>
-    </section>
+    <main className="-mx-4 -my-4 min-h-screen px-4 py-8 text-white md:-mx-8 md:-my-8 md:px-8" style={{ backgroundColor: '#080a0f' }}>
+      <div className="mx-auto max-w-6xl space-y-6">
+        <ClubFixturesManager fixtures={clubData.fixtures} teams={clubData.teams} primaryColour={clubData.club.primary_colour} />
+        <ClubFixtureSettings
+          clubId={clubData.club.id}
+          allowCoachFixtureImports={clubData.club.allow_coach_fixture_imports}
+          primaryColour={clubData.club.primary_colour}
+        />
+      </div>
+    </main>
   );
 }
