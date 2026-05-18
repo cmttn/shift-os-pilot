@@ -37,7 +37,7 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
   club: [
     { href: '/dashboard/club', label: 'Home', icon: 'home' },
     { href: '/dashboard/club/notifications', label: 'Notifications', icon: 'bell' },
-    { href: '/dashboard/club/fixtures', label: 'Schedule', icon: 'calendar' },
+    { href: '/dashboard/club/fixtures', label: 'Fixtures', icon: 'calendar' },
     { href: '/dashboard/club/teams', label: 'Teams', icon: 'teams' },
     { href: '/dashboard/club/tickets', label: 'Tickets', icon: 'tickets' },
     { href: '/dashboard/club/settings', label: 'Settings', icon: 'settings' }

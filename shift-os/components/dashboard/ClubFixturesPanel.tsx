@@ -33,19 +33,7 @@ function typeBadge(fixture: FixtureRecord, primaryColour: string, contrastText: 
   return { label: 'TRAINING', style: { backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)' } };
 }
 
-function downloadTemplate() {
-  const csvContent = 'Date,Time,Type,Home/Away,Opponent,Venue,Full Address,Postcode,Opposition Contact Name,Opposition Contact Phone,Notes,Tournify Link\n';
-  const blob = new Blob([csvContent], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = 'shiftos-fixtures-template.csv';
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function ClubFixturesPanel({ fixtures, primaryColour, darkerPrimary, contrastText }: ClubFixturesPanelProps) {
-  const [showImport, setShowImport] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const visibleFixtures = expanded ? fixtures : fixtures.slice(0, 3);
 
@@ -54,52 +42,20 @@ export default function ClubFixturesPanel({ fixtures, primaryColour, darkerPrima
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h3 className="text-2xl font-bold text-white">Fixtures</h3>
-          <p className="mt-1 text-sm text-white/35">Manage and import your club&apos;s schedule</p>
+          <p className="mt-1 text-sm text-white/35">Manage your club schedule from the fixtures page</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setShowImport((current) => !current)} className="rounded-full border px-4 py-2 text-sm text-white transition-all duration-300 ease-out hover:bg-white/[0.08]" style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)' }}>
-            ↑ Import Fixtures
-          </button>
-          <Link href="/dashboard/club/fixtures/import" className="rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${primaryColour}, ${darkerPrimary})`, color: contrastText }}>
-            Import Fixtures
-          </Link>
-        </div>
+        <Link href="/dashboard/club/fixtures" className="rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${primaryColour}, ${darkerPrimary})`, color: contrastText }}>
+          Manage Fixtures
+        </Link>
       </div>
-
-      {showImport ? (
-        <div className="mt-3 rounded-2xl border p-6" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <h4 className="text-lg font-semibold text-white">Import your fixtures</h4>
-          <p className="mt-1 text-sm text-white/40">Works with Full-Time FA, Pitchero, Tournify and any CSV export</p>
-          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-            {[
-              ['📄', 'CSV Import', 'Upload a CSV from Full-Time FA, Pitchero or our template', '/dashboard/club/fixtures/import', 'Upload CSV →'],
-              ['⚽', 'Full-Time FA', 'Export from your FA Full-Time league page and import directly', '/dashboard/club/fixtures/import?source=fulltime', 'Import →']
-            ].map(([icon, title, description, href, label]) => (
-              <article key={title} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <p className="text-2xl">{icon}</p>
-                <h5 className="mt-3 font-semibold text-white">{title}</h5>
-                <p className="mt-2 text-sm text-white/40">{description}</p>
-                <Link href={href} className="mt-4 inline-flex rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: contrastText }}>{label}</Link>
-              </article>
-            ))}
-            <article className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-              <p className="text-2xl">⬇</p>
-              <h5 className="mt-3 font-semibold text-white">Download Template</h5>
-              <p className="mt-2 text-sm text-white/40">Get our CSV template pre-formatted for easy fixture entry</p>
-              <button type="button" onClick={downloadTemplate} className="mt-4 rounded-full border border-white/10 px-4 py-2 text-sm text-white transition-all duration-300 ease-out hover:bg-white/[0.04]">Download →</button>
-            </article>
-          </div>
-        </div>
-      ) : null}
 
       <div className="mt-5">
         {fixtures.length === 0 ? (
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] py-8 text-center">
             <p className="font-semibold text-white">No fixtures scheduled yet.</p>
-            <p className="mt-2 text-sm text-white/35">Import from your league system or add manually.</p>
-            <div className="mt-5 flex justify-center gap-2">
-              <button type="button" onClick={() => setShowImport(true)} className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: contrastText }}>Import Fixtures</button>
-              <Link href="/dashboard/club/fixtures/import" className="rounded-full border border-white/10 px-4 py-2 text-sm text-white">Open Import</Link>
+            <p className="mt-2 text-sm text-white/35">Open fixture management to upload, import or manage fixtures.</p>
+            <div className="mt-5 flex justify-center">
+              <Link href="/dashboard/club/fixtures" className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: primaryColour, color: contrastText }}>Manage Fixtures</Link>
             </div>
           </div>
         ) : (
@@ -116,13 +72,13 @@ export default function ClubFixturesPanel({ fixtures, primaryColour, darkerPrima
                         <h4 className="mt-1 truncate text-base font-semibold text-white">{fixture.type === 'match' ? `vs ${fixture.opponent}` : fixture.title ?? fixture.opponent}</h4>
                       </div>
                       <div className="min-w-0 text-sm text-white/50 md:flex-1">
-                        <p>📅 {formatDate(fixture.fixture_date)}</p>
-                        <p>⏰ {formatTime(fixture.fixture_date)}</p>
-                        <p className="truncate text-xs text-white/35">📍 {fixture.location ?? 'Location TBC'}</p>
+                        <p>{formatDate(fixture.fixture_date)}</p>
+                        <p>{formatTime(fixture.fixture_date)}</p>
+                        <p className="truncate text-xs text-white/35">{fixture.location ?? 'Location TBC'}</p>
                       </div>
                       <div className="flex items-center justify-between gap-4 md:min-w-[150px]">
-                        <p className="text-xs text-white/45">✅{fixture.available_count} ❌{fixture.unavailable_count} ⏳{fixture.pending_count}</p>
-                        <span className="text-xl text-white/35">→</span>
+                        <p className="text-xs text-white/45">Available {fixture.available_count} / No {fixture.unavailable_count} / Pending {fixture.pending_count}</p>
+                        <Link href="/dashboard/club/fixtures" className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/55">Manage</Link>
                       </div>
                     </div>
                   </article>

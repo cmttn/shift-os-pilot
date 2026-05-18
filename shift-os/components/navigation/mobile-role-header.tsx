@@ -26,7 +26,7 @@ const roleNavItems: Record<MobileHeaderRole, HeaderNavItem[]> = {
   club: [
     { href: '/dashboard/club', label: 'Home' },
     { href: '/dashboard/club/notifications', label: 'Notifications' },
-    { href: '/dashboard/club/fixtures', label: 'Schedule' },
+    { href: '/dashboard/club/fixtures', label: 'Fixtures' },
     { href: '/dashboard/club/teams', label: 'Teams' },
     { href: '/dashboard/club/tickets', label: 'Tickets' },
     { href: '/dashboard/club/settings', label: 'Settings' }
