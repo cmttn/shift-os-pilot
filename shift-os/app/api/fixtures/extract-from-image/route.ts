@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 type HomeAway = 'home' | 'away' | 'neutral' | null;
 type FixtureType = 'match' | 'training' | 'tournament';
 
@@ -69,6 +71,17 @@ function dedupeFixtures(fixtures: ExtractedFixture[]): ExtractedFixture[] {
   return result;
 }
 
+function getAnthropicApiKey(): string | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim().replace(/^["']|["']$/g, '');
+  return apiKey || null;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (isRecord(error) && typeof error.message === 'string') return error.message;
+  return 'Unknown Anthropic error';
+}
+
 export async function POST(request: Request) {
   const formData = await request.formData();
   const files = formData.getAll('images').filter((entry): entry is File => entry instanceof File);
@@ -77,7 +90,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No images were uploaded.', fixtures: [] }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY ?? process.env.CLAUDE_API_KEY;
+  const apiKey = getAnthropicApiKey();
   if (!apiKey) {
     return NextResponse.json({
       code: 'ocr_not_configured',
@@ -141,14 +154,15 @@ Rules:
     }
   } catch (error) {
     console.error('[fixtures/extract-from-image]', error);
-    if (error instanceof Error && /api key|authentication|unauthorized/i.test(error.message)) {
+    const errorMessage = getErrorMessage(error);
+    if (/api key|authentication|unauthorized/i.test(errorMessage)) {
       return NextResponse.json({
-        code: 'ocr_not_configured',
-        error: 'Fixture screenshot scanning could not authenticate with Anthropic. Check ANTHROPIC_API_KEY in Vercel.',
+        code: 'anthropic_auth_failed',
+        error: errorMessage,
         fixtures: []
       }, { status: 503 });
     }
-    return NextResponse.json({ error: 'Could not read fixtures', fixtures: [] }, { status: 422 });
+    return NextResponse.json({ error: errorMessage, fixtures: [] }, { status: 422 });
   }
 
   const fixtures = dedupeFixtures(allFixtures);
