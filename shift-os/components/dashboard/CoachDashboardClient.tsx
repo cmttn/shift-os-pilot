@@ -141,6 +141,7 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
   const teamSessions = data.upcomingSessions.filter((session) => session.team_id === activeTeam?.id);
   const nextFixture = teamSessions.find((session) => new Date(session.session_date).valueOf() <= Date.now() + 14 * 86400000);
   const isClubManaged = Boolean(activeTeam?.is_club_managed);
+  const canImportFixtures = !isClubManaged || Boolean(activeTeam?.allow_coach_fixture_imports);
   const clubName = activeTeam?.club_name ?? 'your club';
   const groupedSessions = useMemo(() => ({
     match: teamSessions.filter((session) => session.type === 'match'),
@@ -406,9 +407,12 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
           <section className="mt-8">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-2xl font-bold text-white">Schedule</h2>
-              {!isClubManaged ? <Link href="/dashboard/coach/fixtures/import" className="rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: primaryColour, color: primaryColour }}>Import Fixtures</Link> : null}
+              <div className="flex items-center gap-2">
+                {isClubManaged ? <Link href="/dashboard/coach/sessions/new?mode=friendly&type=match" className="rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: primaryColour, color: primaryColour }}>Add Friendly</Link> : null}
+                {canImportFixtures ? <Link href="/dashboard/coach/fixtures/import" className="rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: primaryColour, color: primaryColour }}>Import Fixtures</Link> : null}
+              </div>
             </div>
-            {isClubManaged ? <p className="mt-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-xs text-white/35">Fixtures managed by {clubName}. You can add notes and send polls.</p> : null}
+            {isClubManaged ? <p className="mt-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-xs text-white/35">League fixtures are managed by {clubName}. You can add friendlies manually{canImportFixtures ? ' or use the import wizard if needed' : ''}, add notes and send polls.</p> : null}
             {[
               ['Upcoming Matches', 'match', groupedSessions.match],
               ['Upcoming Training', 'training', groupedSessions.training],
@@ -417,7 +421,11 @@ export default function CoachDashboardClient({ data, initialActiveTeamId }: Coac
               <div key={String(type)} className="mt-5">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-xs uppercase tracking-widest text-white/30">{String(label)}</p>
-                  {!isClubManaged ? <Link href={`/dashboard/coach/sessions/new?type=${type}`} className="rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: primaryColour, color: primaryColour }}>Add Session +</Link> : null}
+                  {!isClubManaged ? (
+                    <Link href={`/dashboard/coach/sessions/new?type=${type}`} className="rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: primaryColour, color: primaryColour }}>Add Session +</Link>
+                  ) : type === 'match' ? (
+                    <Link href="/dashboard/coach/sessions/new?mode=friendly&type=match" className="rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: primaryColour, color: primaryColour }}>Add Friendly +</Link>
+                  ) : null}
                 </div>
                 {(sessions as typeof data.upcomingSessions).length === 0 ? <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-white/35">Nothing scheduled.</p> : (sessions as typeof data.upcomingSessions).map((session) => (
                   <Link key={session.id} href={`/dashboard/coach/sessions/${session.id}`} className="mb-3 block rounded-xl border p-4 transition-all duration-300 ease-out hover:-translate-y-0.5" style={{ background: 'linear-gradient(145deg,#0d1117,#0a0e15)', borderColor: 'rgba(255,255,255,0.06)' }}>

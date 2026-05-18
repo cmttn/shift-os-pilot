@@ -10,6 +10,7 @@ export interface ClubRecord {
   secondary_colour: string;
   allow_team_colours: boolean;
   allow_team_badges: boolean;
+  allow_coach_fixture_imports: boolean;
   coach_join_code: string | null;
   plan_tier: 'free' | 'pro' | string;
 }
@@ -148,14 +149,20 @@ export async function getClubData(): Promise<ClubDashboardData | null> {
 
   const { data: membership } = await supabase
     .from('club_members')
-    .select('club_id, club_role, clubs(id,name,ethos,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges,coach_join_code,plan_tier)')
+    .select('club_id, club_role, clubs(*)')
     .eq('user_id', session.user.id)
     .eq('is_active', true)
     .maybeSingle();
 
   const membershipClub = membership?.clubs;
-  const club = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;
-  if (!club) return null;
+  const rawClub = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;
+  if (!rawClub) return null;
+  const club: ClubRecord = {
+    ...rawClub,
+    allow_team_colours: rawClub.allow_team_colours ?? false,
+    allow_team_badges: rawClub.allow_team_badges ?? false,
+    allow_coach_fixture_imports: rawClub.allow_coach_fixture_imports ?? false
+  };
   const clubId = club.id;
   if (!clubId) return null;
   console.log('getClubData clubId:', clubId, 'userId:', session.user.id);

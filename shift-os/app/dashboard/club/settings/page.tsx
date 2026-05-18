@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import ClubBrandingSettings from '@/components/dashboard/ClubBrandingSettings';
+import ClubFixtureSettings from '@/components/dashboard/ClubFixtureSettings';
 import ClubJoinCodeSettings from '@/components/dashboard/ClubJoinCodeSettings';
 import SettingsPage from '@/components/dashboard/SettingsPage';
 import { getClubData } from '@/lib/dashboard/getClubData';
@@ -32,6 +33,11 @@ export default async function ClubSettingsPage() {
         clubId={clubData.club.id}
         allowTeamColours={clubData.club.allow_team_colours}
         allowTeamBadges={clubData.club.allow_team_badges}
+        primaryColour={primaryColour}
+      />
+      <ClubFixtureSettings
+        clubId={clubData.club.id}
+        allowCoachFixtureImports={clubData.club.allow_coach_fixture_imports}
         primaryColour={primaryColour}
       />
       <ClubJoinCodeSettings clubId={clubData.club.id} clubName={clubData.club.name} joinCode={clubData.club.coach_join_code} />

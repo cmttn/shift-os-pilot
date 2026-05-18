@@ -22,6 +22,7 @@ export interface CoachDashboardData {
     team_badge_url: string | null;
     allow_team_colours: boolean;
     allow_team_badges: boolean;
+    allow_coach_fixture_imports: boolean;
     is_lead: boolean;
     plan_tier: string;
     is_club_managed: boolean;
@@ -104,6 +105,7 @@ interface RawCoachTeam {
     badge_url: string | null;
     allow_team_colours: boolean | null;
     allow_team_badges: boolean | null;
+    allow_coach_fixture_imports: boolean | null;
     plan_tier: string | null;
   } | Array<{
     name: string | null;
@@ -112,6 +114,7 @@ interface RawCoachTeam {
     badge_url: string | null;
     allow_team_colours: boolean | null;
     allow_team_badges: boolean | null;
+    allow_coach_fixture_imports: boolean | null;
     plan_tier: string | null;
   }> | null;
 }
@@ -211,7 +214,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
   const [teamsRes, playersRes, sessionsRes] = await Promise.all([
     supabase
       .from('teams')
-      .select('id,name,age_group,gender,join_code,club_id,primary_colour,secondary_colour,badge_url,club_import_token,club_import_status,clubs(name,primary_colour,secondary_colour,badge_url,allow_team_colours,allow_team_badges,plan_tier)')
+      .select('id,name,age_group,gender,join_code,club_id,primary_colour,secondary_colour,badge_url,club_import_token,club_import_status,clubs(*)')
       .in('id', teamIds)
       .eq('is_active', true)
       .order('name', { ascending: true }),
@@ -252,6 +255,7 @@ export async function getCoachData(): Promise<CoachDashboardData | null> {
       team_badge_url: team.badge_url ?? null,
       allow_team_colours: club?.allow_team_colours ?? false,
       allow_team_badges: club?.allow_team_badges ?? false,
+      allow_coach_fixture_imports: club?.allow_coach_fixture_imports ?? false,
       plan_tier: club?.plan_tier ?? 'free',
       is_club_managed: Boolean(team.club_id),
       is_lead: assignment?.is_lead ?? false

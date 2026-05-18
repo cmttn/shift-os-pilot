@@ -11,6 +11,7 @@ type SessionType = 'match' | 'training' | 'tournament';
 interface CreateSessionFormProps {
   coachData: CoachDashboardData;
   initialType?: SessionType;
+  friendlyOnly?: boolean;
 }
 
 function getUrlSessionType(value: string | null): SessionType | null {
@@ -18,10 +19,10 @@ function getUrlSessionType(value: string | null): SessionType | null {
   return null;
 }
 
-export default function CreateSessionForm({ coachData, initialType }: CreateSessionFormProps) {
+export default function CreateSessionForm({ coachData, initialType, friendlyOnly = false }: CreateSessionFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const defaultType = initialType ?? getUrlSessionType(searchParams.get('type')) ?? 'match';
+  const defaultType = friendlyOnly ? 'match' : initialType ?? getUrlSessionType(searchParams.get('type')) ?? 'match';
   const [type, setType] = useState<SessionType>(defaultType);
   const [teamId, setTeamId] = useState(coachData.activeTeamId);
   const [date, setDate] = useState('');
@@ -98,13 +99,20 @@ export default function CreateSessionForm({ coachData, initialType }: CreateSess
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-3 gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
-        {(['match', 'training', 'tournament'] as SessionType[]).map((option) => (
-          <button key={option} type="button" onClick={() => setType(option)} className="rounded-full px-3 py-2 text-sm font-semibold capitalize transition-all duration-300 ease-out" style={type === option ? { backgroundColor: primaryColour, color: primaryText } : { color: 'rgba(255,255,255,0.45)' }}>
-            {option}
-          </button>
-        ))}
-      </div>
+      {friendlyOnly ? (
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <p className="text-sm font-semibold text-white">Friendly fixture</p>
+          <p className="mt-1 text-xs text-white/40">Use this for one-off friendlies while league fixture imports are managed by your club.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
+          {(['match', 'training', 'tournament'] as SessionType[]).map((option) => (
+            <button key={option} type="button" onClick={() => setType(option)} className="rounded-full px-3 py-2 text-sm font-semibold capitalize transition-all duration-300 ease-out" style={type === option ? { backgroundColor: primaryColour, color: primaryText } : { color: 'rgba(255,255,255,0.45)' }}>
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
 
       <select value={teamId} onChange={(event) => setTeamId(event.target.value)} className={inputClass}>
         {coachData.teams.map((team) => <option key={team.id} value={team.id} className="bg-[#0d1117]">{team.name}</option>)}
@@ -115,7 +123,7 @@ export default function CreateSessionForm({ coachData, initialType }: CreateSess
       </div>
       {type === 'match' ? (
         <>
-          <input value={opponent} onChange={(event) => setOpponent(event.target.value)} className={inputClass} placeholder="Opponent" />
+          <input value={opponent} onChange={(event) => setOpponent(event.target.value)} className={inputClass} placeholder={friendlyOnly ? 'Friendly opponent' : 'Opponent'} />
           <div className="grid grid-cols-2 gap-2">
             {[true, false].map((home) => (
               <button key={String(home)} type="button" onClick={() => setIsHome(home)} className="rounded-full border px-4 py-3 text-sm font-semibold transition-all duration-300 ease-out" style={isHome === home ? { backgroundColor: primaryColour, borderColor: primaryColour, color: primaryText } : { borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }}>

@@ -82,7 +82,7 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
 
   const { data: membership } = await supabase
     .from('club_members')
-    .select('club_id, club_role, clubs(id,name,ethos,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges,coach_join_code,plan_tier)')
+    .select('club_id, club_role, clubs(*)')
     .eq('user_id', session.user.id)
     .eq('is_active', true)
     .maybeSingle();
@@ -140,15 +140,28 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
   }));
   const rawTeams = (teamsRes.data ?? []) as RawCoachTeamRecord[];
   const membershipClub = membership?.clubs;
-  const memberClub = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;
+  const rawMemberClub = (Array.isArray(membershipClub) ? membershipClub[0] : membershipClub) as ClubRecord | null;
+  const memberClub = rawMemberClub ? {
+    ...rawMemberClub,
+    allow_team_colours: rawMemberClub.allow_team_colours ?? false,
+    allow_team_badges: rawMemberClub.allow_team_badges ?? false,
+    allow_coach_fixture_imports: rawMemberClub.allow_coach_fixture_imports ?? false
+  } : null;
   const firstClubId = rawTeams.find((team) => team.club_id)?.club_id ?? null;
   const { data: teamClubData } =
     !memberClub && firstClubId
-      ? await supabase.from('clubs').select('id,name,ethos,badge_url,primary_colour,secondary_colour,allow_team_colours,allow_team_badges,coach_join_code,plan_tier').eq('id', firstClubId).maybeSingle()
+      ? await supabase.from('clubs').select('*').eq('id', firstClubId).maybeSingle()
       : { data: null };
+  const rawTeamClub = teamClubData as ClubRecord | null;
+  const teamClub = rawTeamClub ? {
+    ...rawTeamClub,
+    allow_team_colours: rawTeamClub.allow_team_colours ?? false,
+    allow_team_badges: rawTeamClub.allow_team_badges ?? false,
+    allow_coach_fixture_imports: rawTeamClub.allow_coach_fixture_imports ?? false
+  } : null;
   const club =
     memberClub ??
-    ((teamClubData as ClubRecord | null) ?? {
+    (teamClub ?? {
       id: 'independent',
       name: 'Independent Team',
       ethos: 'Coach-led workspace.',
@@ -157,6 +170,7 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData | null
       secondary_colour: '#080a0f',
       allow_team_colours: true,
       allow_team_badges: true,
+      allow_coach_fixture_imports: true,
       coach_join_code: null,
       plan_tier: 'free'
     });
